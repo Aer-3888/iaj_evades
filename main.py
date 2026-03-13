@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 
 import pygame
@@ -7,6 +8,13 @@ import pygame
 from config import GameConfig
 from entities import Action, DELTA_TO_ACTION
 from game import GameEnvironment
+from genetic_ai import LinearPolicyGenome, observation_size_for_config
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Play or watch the dodge runner game.")
+    parser.add_argument("--ai", type=str, default=None, help="Path to a saved genome JSON file")
+    return parser
 
 
 def action_from_keyboard() -> Action:
@@ -77,7 +85,7 @@ def draw_world(screen: pygame.Surface, env: GameEnvironment, config: GameConfig,
     screen.blit(best_text, (220, 18))
     screen.blit(seed_text, (220, 46))
 
-    controls_text = font.render("Move: WASD / Arrows   Restart: R   Quit: Esc", True, config.text_color)
+    controls_text = font.render("Move: WASD / Arrows   Restart: R   Toggle AI: T   Quit: Esc", True, config.text_color)
     screen.blit(controls_text, (20, config.screen_height - 34))
 
     if env.done and env.done_reason == "goal":
@@ -87,6 +95,7 @@ def draw_world(screen: pygame.Surface, env: GameEnvironment, config: GameConfig,
 
 
 def main() -> None:
+    args = build_parser().parse_args()
     pygame.init()
     config = GameConfig()
     screen = pygame.display.set_mode((config.screen_width, config.screen_height))
@@ -95,6 +104,12 @@ def main() -> None:
     font = pygame.font.SysFont("consolas", 22)
 
     env = GameEnvironment(config=config)
+    ai_genome: LinearPolicyGenome | None = None
+    ai_enabled = False
+    if args.ai is not None:
+        ai_genome = LinearPolicyGenome.load(args.ai, expected_input_size=observation_size_for_config(config))
+        ai_enabled = True
+
     accumulator = 0.0
     running = True
 
@@ -110,22 +125,26 @@ def main() -> None:
                     running = False
                 elif event.key == pygame.K_r:
                     env.reset()
-
-        action = action_from_keyboard()
+                elif event.key == pygame.K_t and ai_genome is not None:
+                    ai_enabled = not ai_enabled
 
         while accumulator >= config.fixed_timestep:
             accumulator -= config.fixed_timestep
 
             if env.done:
-                if env.done_reason in {"collision", "timeout"}:
+                if ai_enabled or env.done_reason in {"collision", "timeout"}:
                     env.reset()
                 else:
                     break
 
+            action = ai_genome.act(env.get_observation()) if ai_enabled and ai_genome is not None else action_from_keyboard()
             env.step(action)
 
         camera_x = camera_x_for_player(env, config)
         draw_world(screen, env, config, camera_x, font)
+        if ai_genome is not None:
+            mode_text = font.render(f"Mode {'AI' if ai_enabled else 'Manual'}", True, config.warning_color)
+            screen.blit(mode_text, (config.screen_width - 165, 18))
         pygame.display.flip()
 
     pygame.quit()
