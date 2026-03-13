@@ -20,12 +20,16 @@ class CoreEngine:
         self.elapsed_time = 0.0
         self.done = False
         self.done_reason = ""
+        self.level = 1
         self.rng = random.Random()
 
-    def reset(self, seed: Optional[int] = None):
+    def reset(self, seed: Optional[int] = None, reset_level: bool = True):
         if seed is not None:
             self.rng.seed(seed)
         
+        if reset_level:
+            self.level = 1
+            
         self.entity_manager = EntityManager()
         self.elapsed_time = 0.0
         self.done = False
@@ -50,8 +54,9 @@ class CoreEngine:
         MovementSystem.update(self.entity_manager, dt)
         BoundarySystem.update(
             self.entity_manager, 
-            0.0, float(self.config.world_width), 
-            float(self.config.corridor_top), float(self.config.corridor_bottom)
+            float(self.config.world_width), 
+            float(self.config.corridor_top), float(self.config.corridor_bottom),
+            float(self.config.start_margin), float(self.config.goal_x)
         )
         
         self.elapsed_time += dt
@@ -59,30 +64,67 @@ class CoreEngine:
         player_pos = self.entity_manager.get_component(self.player_id, PositionComponent)
         player_col = self.entity_manager.get_component(self.player_id, CircleColliderComponent)
         
-        if CollisionSystem.check_player_enemy_collisions(self.entity_manager):
+        # Only check for collisions in the "danger zone" (between safe zones)
+        is_in_danger_zone = self.config.start_margin < player_pos.x < self.config.goal_x
+        if is_in_danger_zone and CollisionSystem.check_player_enemy_collisions(self.entity_manager):
             self.done = True
             self.done_reason = "collision"
-        elif player_pos.x + player_col.radius >= self.config.goal_x:
-            self.done = True
-            self.done_reason = "goal"
+        
+        # Seamless level transitions based on world boundaries
+        if player_pos.x + player_col.radius >= self.config.world_width:
+            self._transition_level(direction=1)
+        elif player_pos.x - player_col.radius <= 0 and self.level > 1:
+            self._transition_level(direction=-1)
+            
         elif self.elapsed_time >= self.config.max_episode_time:
             self.done = True
             self.done_reason = "timeout"
 
+    def _transition_level(self, direction: int):
+        """Seamlessly transition to another level by teleporting the player."""
+        self.level += direction
+        
+        player_pos = self.entity_manager.get_component(self.player_id, PositionComponent)
+        player_vel = self.entity_manager.get_component(self.player_id, VelocityComponent)
+        player_col = self.entity_manager.get_component(self.player_id, CircleColliderComponent)
+        
+        # Teleport to the opposite side
+        if direction == 1: # Moving to next level (right border)
+            player_pos.x = player_col.radius + 5 # Small offset from the left edge
+        else: # Moving back to previous level (left border)
+            player_pos.x = self.config.world_width - player_col.radius - 5 # Small offset from the right edge
+            
+        player_vel.vx = 0.0
+        player_vel.vy = 0.0
+        
+        # Re-generate enemies with the new level's difficulty
+        for e_id in self.enemy_ids:
+            for comp_type in self.entity_manager.components:
+                if e_id in self.entity_manager.components[comp_type]:
+                    del self.entity_manager.components[comp_type][e_id]
+        
+        self.enemy_ids = self._spawn_enemies()
+
     def _spawn_enemies(self) -> list[int]:
         enemy_ids = []
-        start_safe_x = self.config.start_margin + 220
-        end_safe_x = self.config.goal_x - 180
+        # Enemies spawn strictly in the danger zone
+        start_safe_x = self.config.start_margin + 50
+        end_safe_x = self.config.goal_x - 50
         min_y = self.config.corridor_top
         max_y = self.config.corridor_bottom
 
-        for _ in range(self.config.enemy_count):
+        # Difficulty scaling
+        current_count = self.config.enemy_count + (self.level - 1) * 2
+        speed_multiplier = 1.0 + (self.level - 1) * 0.15
+
+        for _ in range(current_count):
             radius = float(self.rng.randint(self.config.enemy_radius_min, self.config.enemy_radius_max))
             
-            # Simplified spawning logic for brevity, keeping the spirit of the original
             x = self.rng.uniform(start_safe_x, end_safe_x)
             y = self.rng.uniform(min_y + radius, max_y - radius)
-            speed = self.rng.uniform(self.config.enemy_speed_min, self.config.enemy_speed_max)
+            
+            base_speed = self.rng.uniform(self.config.enemy_speed_min, self.config.enemy_speed_max)
+            speed = base_speed * speed_multiplier
             angle = self.rng.uniform(0.0, math.tau)
             
             e_id = self.entity_manager.create_entity()

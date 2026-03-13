@@ -30,7 +30,8 @@ class PlayingState(GameState):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    self.rl_env.reset()
+                    # 'R' manually resets to Level 1
+                    self.rl_env.reset(reset_level=True)
 
     def _get_action(self) -> Action:
         pressed = pygame.key.get_pressed()
@@ -46,10 +47,8 @@ class PlayingState(GameState):
             self.accumulator -= self.config.fixed_timestep
             
             if self.engine.done:
-                if self.engine.done_reason in {"collision", "timeout"}:
-                    self.rl_env.reset()
-                else:
-                    break
+                # Auto-restart from Level 1 on death/timeout
+                self.rl_env.reset(reset_level=True)
             
             self.rl_env.step(action, self.config.fixed_timestep)
 

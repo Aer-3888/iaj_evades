@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class GameConfig:
     screen_width: int = 1000
     screen_height: int = 500
-    world_width: int = 5000
+    world_width: int = 3000
     world_height: int = 500
     corridor_top: int = 60
     corridor_bottom: int = 440
@@ -29,7 +29,7 @@ class GameConfig:
     lane_marker_color: tuple[int, int, int] = (60, 76, 96)
     player_color: tuple[int, int, int] = (97, 218, 251)
     enemy_color: tuple[int, int, int] = (255, 126, 95)
-    goal_color: tuple[int, int, int] = (130, 218, 109)
+    goal_color: tuple[int, int, int] = (50, 60, 80)  # Subtle Slate Blue-Gray
     text_color: tuple[int, int, int] = (235, 240, 245)
     warning_color: tuple[int, int, int] = (255, 210, 120)
 

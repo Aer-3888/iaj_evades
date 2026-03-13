@@ -8,31 +8,49 @@ class RLWrapper:
         self.engine = engine
         self.config = engine.config
         self.best_x = 0.0
+        self.max_level_reached = 1
         self.total_deaths = 0
         self.total_wins = 0
 
-    def reset(self, seed: Optional[int] = None) -> List[float]:
-        self.engine.reset(seed)
+    def reset(self, seed: Optional[int] = None, reset_level: bool = True) -> List[float]:
+        self.engine.reset(seed, reset_level=reset_level)
+        if reset_level:
+            self.max_level_reached = 1
+            self.total_wins = 0
+            
         player_pos = self.engine.entity_manager.get_component(self.engine.player_id, PositionComponent)
         self.best_x = player_pos.x
         return self.get_observation()
 
     def step(self, action: Action, dt: float) -> Tuple[List[float], float, bool, Dict[str, Any]]:
         previous_best = self.best_x
+        previous_level = self.engine.level
         self.engine.step(action, dt)
         
         player_pos = self.engine.entity_manager.get_component(self.engine.player_id, PositionComponent)
-        self.best_x = max(self.best_x, player_pos.x)
         
-        reward = (self.best_x - previous_best) * 0.02
+        # Level transition handling
+        if self.engine.level != previous_level:
+            if self.engine.level > previous_level:
+                # Progressed to next level
+                if self.engine.level > self.max_level_reached:
+                    self.max_level_reached = self.engine.level
+                    self.total_wins += 1 # Only count unique level completions as "wins"
+                reward = 250.0 
+            else:
+                # Went back to previous level
+                reward = 0.0 # No penalty for exploring back, but no gain
+            
+            # Reset tracking for the new/returned level
+            self.best_x = player_pos.x
+        else:
+            self.best_x = max(self.best_x, player_pos.x)
+            reward = (self.best_x - previous_best) * 0.02
         
         if self.engine.done:
             if self.engine.done_reason == "collision":
                 self.total_deaths += 1
                 reward -= 150.0
-            elif self.engine.done_reason == "goal":
-                self.total_wins += 1
-                reward += 250.0
             elif self.engine.done_reason == "timeout":
                 reward -= 50.0
                 
@@ -51,9 +69,10 @@ class RLWrapper:
             p_vel.vy / self.config.player_speed,
             max(0.0, self.config.goal_x - p_pos.x) / self.config.world_width,
             self.engine.elapsed_time / self.config.max_episode_time,
+            float(self.engine.level) / 10.0,  # Normalized level
         ]
 
-        max_enemy_speed = self.config.enemy_speed_max
+        max_enemy_speed = self.config.enemy_speed_max * (1.0 + (self.engine.level - 1) * 0.15)
         for e_id in self.engine.enemy_ids:
             e_pos = em.get_component(e_id, PositionComponent)
             e_vel = em.get_component(e_id, VelocityComponent)
@@ -81,4 +100,5 @@ class RLWrapper:
             "progress_ratio": progress_ratio,
             "deaths": float(self.total_deaths),
             "wins": float(self.total_wins),
+            "level": self.engine.level,
         }

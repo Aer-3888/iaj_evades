@@ -63,34 +63,37 @@ class PlayerControlSystem:
 
 class BoundarySystem:
     @staticmethod
-    def update(entity_manager: EntityManager, min_x: float, max_x: float, min_y: float, max_y: float):
-        # Handle Player boundaries (Clamping)
+    def update(entity_manager: EntityManager, world_width: float, corridor_top: float, corridor_bottom: float, start_margin: float, goal_x: float):
+        # Handle Player boundaries (Clamping to full world for teleporting)
         players = entity_manager.get_entities_with(PlayerComponent, PositionComponent, CircleColliderComponent)
         for entity_id in players:
             pos = entity_manager.get_component(entity_id, PositionComponent)
             col = entity_manager.get_component(entity_id, CircleColliderComponent)
-            pos.x = max(min_x + col.radius, min(max_x - col.radius, pos.x))
-            pos.y = max(min_y + col.radius, min(max_y - col.radius, pos.y))
+            
+            # Allow player to reach absolute X boundaries for teleport triggers
+            pos.x = max(0, min(world_width, pos.x))
+            pos.y = max(corridor_top + col.radius, min(corridor_bottom - col.radius, pos.y))
 
-        # Handle Enemy boundaries (Bouncing)
+        # Handle Enemy boundaries (Clamping to Danger Zone only)
         enemies = entity_manager.get_entities_with(EnemyComponent, PositionComponent, VelocityComponent, CircleColliderComponent)
         for entity_id in enemies:
             pos = entity_manager.get_component(entity_id, PositionComponent)
             vel = entity_manager.get_component(entity_id, VelocityComponent)
             col = entity_manager.get_component(entity_id, CircleColliderComponent)
             
-            if pos.x - col.radius <= min_x:
-                pos.x = min_x + col.radius
+            # Enemies stay strictly between the safe zones
+            if pos.x - col.radius <= start_margin:
+                pos.x = start_margin + col.radius
                 vel.vx *= -1.0
-            elif pos.x + col.radius >= max_x:
-                pos.x = max_x - col.radius
+            elif pos.x + col.radius >= goal_x:
+                pos.x = goal_x - col.radius
                 vel.vx *= -1.0
 
-            if pos.y - col.radius <= min_y:
-                pos.y = min_y + col.radius
+            if pos.y - col.radius <= corridor_top:
+                pos.y = corridor_top + col.radius
                 vel.vy *= -1.0
-            elif pos.y + col.radius >= max_y:
-                pos.y = max_y - col.radius
+            elif pos.y + col.radius >= corridor_bottom:
+                pos.y = corridor_bottom - col.radius
                 vel.vy *= -1.0
 
 class CollisionSystem:
