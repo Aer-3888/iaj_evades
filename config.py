@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class GameConfig:
     screen_width: int = 1000
     screen_height: int = 500
-    world_width: int = 5000
+    world_width: int = 2000
     world_height: int = 500
     corridor_top: int = 60
     corridor_bottom: int = 440
@@ -17,7 +17,7 @@ class GameConfig:
     player_speed: float = 260.0
     enemy_speed_min: float = 130.0
     enemy_speed_max: float = 230.0
-    enemy_count: int = 12
+    enemy_count: int = 70
     fixed_timestep: float = 1.0 / 60.0
     render_fps: int = 60
     max_episode_time: float = 60.0
