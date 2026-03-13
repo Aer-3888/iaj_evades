@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass
 class GameConfig:
     screen_width: int = 1000
     screen_height: int = 500
@@ -17,6 +17,7 @@ class GameConfig:
     player_speed: float = 260.0
     enemy_speed_min: float = 130.0
     enemy_speed_max: float = 230.0
+    speed_multiplier: float = 1.0
     enemy_count: int = 12
     fixed_timestep: float = 1.0 / 60.0
     render_fps: int = 60

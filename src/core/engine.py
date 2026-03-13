@@ -35,10 +35,11 @@ class CoreEngine:
         self.done = False
         self.done_reason = ""
         
-        # Create Player
+        # Create Player - Spawn clearly inside the start safe zone
         self.player_id = self.entity_manager.create_entity()
         start_y = self.config.corridor_top + self.config.corridor_height / 2.0
-        self.entity_manager.add_component(self.player_id, PositionComponent(float(self.config.start_margin), float(start_y)))
+        # Position at 40 (half of start_margin 80)
+        self.entity_manager.add_component(self.player_id, PositionComponent(float(self.config.start_margin / 2.0), float(start_y)))
         self.entity_manager.add_component(self.player_id, VelocityComponent(0.0, 0.0))
         self.entity_manager.add_component(self.player_id, CircleColliderComponent(float(self.config.player_radius), self.config.player_color))
         self.entity_manager.add_component(self.player_id, PlayerComponent())
@@ -50,7 +51,8 @@ class CoreEngine:
         if self.done:
             return
         
-        PlayerControlSystem.apply_action(self.entity_manager, action, self.config.player_speed)
+        # Apply speed multiplier to player speed
+        PlayerControlSystem.apply_action(self.entity_manager, action, self.config.player_speed * self.config.speed_multiplier)
         MovementSystem.update(self.entity_manager, dt)
         BoundarySystem.update(
             self.entity_manager, 
@@ -88,11 +90,11 @@ class CoreEngine:
         player_vel = self.entity_manager.get_component(self.player_id, VelocityComponent)
         player_col = self.entity_manager.get_component(self.player_id, CircleColliderComponent)
         
-        # Teleport to the opposite side
+        # Teleport to the opposite side, deep within the safe zones
         if direction == 1: # Moving to next level (right border)
-            player_pos.x = player_col.radius + 5 # Small offset from the left edge
+            player_pos.x = float(self.config.start_margin / 2.0)
         else: # Moving back to previous level (left border)
-            player_pos.x = self.config.world_width - player_col.radius - 5 # Small offset from the right edge
+            player_pos.x = float(self.config.world_width - self.config.goal_width / 2.0)
             
         player_vel.vx = 0.0
         player_vel.vy = 0.0
@@ -115,7 +117,8 @@ class CoreEngine:
 
         # Difficulty scaling
         current_count = self.config.enemy_count + (self.level - 1) * 2
-        speed_multiplier = 1.0 + (self.level - 1) * 0.15
+        # Apply global speed multiplier
+        speed_multiplier = (1.0 + (self.level - 1) * 0.15) * self.config.speed_multiplier
 
         for _ in range(current_count):
             radius = float(self.rng.randint(self.config.enemy_radius_min, self.config.enemy_radius_max))
