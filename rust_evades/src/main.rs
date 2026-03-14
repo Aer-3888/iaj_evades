@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum};
 use rust_evades::{
     config::GameConfig,
     headless::{run_headless, ControllerMode, HeadlessOptions},
-    neat_player::ModelController,
+    model_player::ModelController,
     render::run_window,
 };
 
@@ -35,7 +35,7 @@ struct Cli {
     #[arg(long)]
     seed: Option<u64>,
 
-    #[arg(long, help = "Path to a trained NEAT model JSON for gameplay")]
+    #[arg(long, help = "Path to a trained DQN or NEAT model JSON for gameplay")]
     model: Option<String>,
 
     #[arg(long, value_enum, default_value_t = CliController::Model)]
