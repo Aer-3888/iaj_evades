@@ -325,7 +325,9 @@ impl GameState {
     }
 
     fn spawn_enemies(&mut self) -> Vec<Enemy> {
-        let mut enemies = Vec::with_capacity(self.config.enemy_count);
+        let wall_enemy_count = self.config.wall_enemy_pairs_per_wall * 4;
+        let mut enemies = Vec::with_capacity(self.config.enemy_count + wall_enemy_count);
+        enemies.extend(self.spawn_wall_enemies());
         let start_safe_x = self.config.start_margin + 220.0;
         let end_safe_x = self.config.goal_x() - 180.0;
 
@@ -389,6 +391,76 @@ impl GameState {
             });
 
             enemies.push(enemy);
+        }
+
+        enemies
+    }
+
+    fn spawn_wall_enemies(&self) -> Vec<Enemy> {
+        let mut enemies = Vec::with_capacity(self.config.wall_enemy_pairs_per_wall * 4);
+        let lane_start = self.config.start_margin + 260.0;
+        let lane_end = self.config.goal_x() - 220.0;
+        let spacing =
+            (lane_end - lane_start) / (self.config.wall_enemy_pairs_per_wall.max(1) as f32 + 1.0);
+        let top_y = self.config.corridor_top + self.config.wall_enemy_radius;
+        let bottom_y = self.config.corridor_bottom - self.config.wall_enemy_radius;
+
+        for index in 0..self.config.wall_enemy_pairs_per_wall {
+            let anchor_x = lane_start + spacing * (index as f32 + 1.0);
+            let offset = 48.0;
+
+            enemies.push(Enemy {
+                body: CircleBody {
+                    pos: Vec2 {
+                        x: anchor_x - offset,
+                        y: top_y,
+                    },
+                    vel: Vec2 {
+                        x: self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
+                    radius: self.config.wall_enemy_radius,
+                },
+            });
+            enemies.push(Enemy {
+                body: CircleBody {
+                    pos: Vec2 {
+                        x: anchor_x + offset,
+                        y: top_y,
+                    },
+                    vel: Vec2 {
+                        x: -self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
+                    radius: self.config.wall_enemy_radius,
+                },
+            });
+            enemies.push(Enemy {
+                body: CircleBody {
+                    pos: Vec2 {
+                        x: anchor_x - offset,
+                        y: bottom_y,
+                    },
+                    vel: Vec2 {
+                        x: self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
+                    radius: self.config.wall_enemy_radius,
+                },
+            });
+            enemies.push(Enemy {
+                body: CircleBody {
+                    pos: Vec2 {
+                        x: anchor_x + offset,
+                        y: bottom_y,
+                    },
+                    vel: Vec2 {
+                        x: -self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
+                    radius: self.config.wall_enemy_radius,
+                },
+            });
         }
 
         enemies
@@ -516,5 +588,30 @@ mod tests {
 
         assert!(result.done);
         assert_eq!(result.done_reason, DoneReason::Collision);
+    }
+
+    #[test]
+    fn reset_adds_wall_enemies() {
+        let config = GameConfig::default();
+        let state = GameState::new(config.clone(), Some(1));
+        assert!(state.enemies.len() >= config.enemy_count + config.wall_enemy_pairs_per_wall * 4);
+    }
+
+    #[test]
+    fn wall_enemies_spawn_on_top_and_bottom_edges() {
+        let config = GameConfig::default();
+        let state = GameState::new(config.clone(), Some(1));
+        let top_y = config.corridor_top + config.wall_enemy_radius;
+        let bottom_y = config.corridor_bottom - config.wall_enemy_radius;
+        let wall_enemy_total = state
+            .enemies
+            .iter()
+            .filter(|enemy| {
+                enemy.body.radius == config.wall_enemy_radius
+                    && (enemy.body.pos.y == top_y || enemy.body.pos.y == bottom_y)
+                    && enemy.body.vel.y == 0.0
+            })
+            .count();
+        assert_eq!(wall_enemy_total, config.wall_enemy_pairs_per_wall * 4);
     }
 }

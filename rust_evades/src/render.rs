@@ -5,12 +5,20 @@ use font8x8::{UnicodeFonts, BASIC_FONTS};
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 
 use crate::{
-    autopilot::AutoPilot,
     config::{Color, GameConfig},
     game::{Action, DoneReason, GameState},
+    neat_player::ModelController,
 };
 
-pub fn run_window(config: GameConfig, seed: Option<u64>, autoplay: bool) -> anyhow::Result<()> {
+pub fn run_window(
+    config: GameConfig,
+    seed: Option<u64>,
+    mut model: Option<ModelController>,
+) -> anyhow::Result<()> {
+    if model.is_none() {
+        anyhow::bail!("`--model <path>` is required for non-headless model playback");
+    }
+
     let mut state = GameState::new(config.clone(), seed);
     let mut window = Window::new(
         "Rust Evades",
@@ -24,8 +32,10 @@ pub fn run_window(config: GameConfig, seed: Option<u64>, autoplay: bool) -> anyh
     )
     .context("failed to create window")?;
     let mut buffer = vec![0; config.screen_width * config.screen_height];
-    let autopilot = AutoPilot::default();
-    let mut auto_enabled = autoplay;
+    let mut model_enabled = true;
+    if let Some(controller) = &mut model {
+        controller.reset(&state);
+    }
     let mut show_fps = false;
     let mut displayed_fps = 0.0f32;
     let timestep = Duration::from_secs_f32(config.fixed_timestep);
@@ -41,8 +51,13 @@ pub fn run_window(config: GameConfig, seed: Option<u64>, autoplay: bool) -> anyh
 
         for key in window.get_keys_pressed(KeyRepeat::No) {
             match key {
-                Key::R => state.reset(None),
-                Key::B => auto_enabled = !auto_enabled,
+                Key::R => {
+                    state.reset(None);
+                    if let Some(controller) = &mut model {
+                        controller.reset(&state);
+                    }
+                }
+                Key::B => model_enabled = !model_enabled,
                 Key::F3 => show_fps = !show_fps,
                 _ => {}
             }
@@ -62,20 +77,26 @@ pub fn run_window(config: GameConfig, seed: Option<u64>, autoplay: bool) -> anyh
             accumulator -= timestep;
 
             if state.done {
-                if auto_enabled
+                if model_enabled
                     || matches!(
                         state.done_reason,
                         DoneReason::Collision | DoneReason::Timeout
                     )
                 {
                     state.reset(None);
+                    if let Some(controller) = &mut model {
+                        controller.reset(&state);
+                    }
                 } else {
                     break;
                 }
             }
 
-            let action = if auto_enabled {
-                autopilot.choose_action(&state)
+            let action = if model_enabled {
+                model
+                    .as_mut()
+                    .map(|controller| controller.choose_action(&state))
+                    .unwrap_or(Action::Idle)
             } else {
                 keyboard_action(&window)
             };
@@ -88,7 +109,8 @@ pub fn run_window(config: GameConfig, seed: Option<u64>, autoplay: bool) -> anyh
             &state,
             &config,
             camera_x,
-            auto_enabled,
+            true,
+            model_enabled,
             show_fps,
             displayed_fps,
         );
@@ -135,7 +157,8 @@ fn draw_world(
     state: &GameState,
     config: &GameConfig,
     camera_x: f32,
-    auto_enabled: bool,
+    _has_model: bool,
+    model_enabled: bool,
     show_fps: bool,
     displayed_fps: f32,
 ) {
@@ -272,7 +295,7 @@ fn draw_world(
         config,
         20,
         config.screen_height as i32 - 30,
-        "MOVE WASD/ARROWS  RESTART R  TOGGLE AUTOPILOT B  TOGGLE FPS F3  QUIT ESC",
+        "MOVE WASD/ARROWS  RESTART R  TOGGLE MODEL B  TOGGLE FPS F3  QUIT ESC",
         config.text_color,
     );
     draw_text(
@@ -280,8 +303,8 @@ fn draw_world(
         config,
         config.screen_width as i32 - 180,
         18,
-        if auto_enabled {
-            "MODE AUTO"
+        if model_enabled {
+            "MODE MODEL"
         } else {
             "MODE MANUAL"
         },
