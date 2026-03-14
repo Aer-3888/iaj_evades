@@ -628,6 +628,8 @@ dependencies = [
  "minifb",
  "rand",
  "rand_chacha",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

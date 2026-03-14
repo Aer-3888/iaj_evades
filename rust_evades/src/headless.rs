@@ -1,19 +1,22 @@
 use crate::{
-    autopilot::AutoPilot,
     config::GameConfig,
     game::{Action, EpisodeReport, GameState},
+    neat_player::ModelController,
 };
 
 #[derive(Clone, Copy, Debug)]
 pub enum ControllerMode {
-    Auto,
+    Model,
     RightOnly,
 }
 
 impl ControllerMode {
-    pub fn action(self, state: &GameState, autopilot: &AutoPilot) -> Action {
+    pub fn action(self, state: &GameState, model: &mut Option<ModelController>) -> Action {
         match self {
-            ControllerMode::Auto => autopilot.choose_action(state),
+            ControllerMode::Model => model
+                .as_mut()
+                .map(|controller| controller.choose_action(state))
+                .unwrap_or(Action::Idle),
             ControllerMode::RightOnly => Action::Right,
         }
     }
@@ -24,6 +27,7 @@ pub struct HeadlessOptions {
     pub seed: Option<u64>,
     pub episodes: u32,
     pub controller: ControllerMode,
+    pub model: Option<ModelController>,
 }
 
 #[derive(Clone, Debug)]
@@ -39,7 +43,7 @@ pub struct HeadlessSummary {
 
 pub fn run_headless(config: GameConfig, options: HeadlessOptions) -> HeadlessSummary {
     let mut state = GameState::new(config, options.seed);
-    let autopilot = AutoPilot::default();
+    let mut model = options.model;
     let mut total_progress = 0.0;
     let mut total_fitness = 0.0;
     let mut wins = 0;
@@ -49,8 +53,11 @@ pub fn run_headless(config: GameConfig, options: HeadlessOptions) -> HeadlessSum
 
     for _ in 0..options.episodes {
         state.reset(None);
+        if let Some(controller) = &mut model {
+            controller.reset(&state);
+        }
         while !state.done {
-            let action = options.controller.action(&state, &autopilot);
+            let action = options.controller.action(&state, &mut model);
             state.step_fixed(action);
         }
         let report = state.episode_report();
@@ -89,6 +96,7 @@ mod tests {
                 seed: Some(7),
                 episodes: 1,
                 controller: ControllerMode::RightOnly,
+                model: None,
             },
         );
 
@@ -100,6 +108,7 @@ mod tests {
                 seed: Some(7),
                 episodes: 1,
                 controller: ControllerMode::RightOnly,
+                model: None,
             },
         );
 
