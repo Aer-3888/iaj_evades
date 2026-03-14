@@ -34,8 +34,11 @@ enum Command {
         #[arg(long, default_value_t = 2)]
         seed_start: u64,
 
-        #[arg(long, default_value_t = 40)]
+        #[arg(long, default_value_t = 24)]
         seed_count: usize,
+
+        #[arg(long, default_value_t = 4)]
+        random_seed_count: usize,
 
         #[arg(long, default_value_t = 25)]
         checkpoint_every: usize,
@@ -63,6 +66,7 @@ fn main() -> anyhow::Result<()> {
             trainer_seed,
             seed_start,
             seed_count,
+            random_seed_count,
             checkpoint_every,
         } => {
             let config = TrainingConfig {
@@ -70,7 +74,8 @@ fn main() -> anyhow::Result<()> {
                 generations,
                 trainer_seed,
                 checkpoint_every,
-                evaluation_seeds: default_training_seeds(seed_start, seed_count),
+                fixed_evaluation_seeds: default_training_seeds(seed_start, seed_count),
+                random_seed_count_per_generation: random_seed_count,
                 ..TrainingConfig::default()
             };
 
