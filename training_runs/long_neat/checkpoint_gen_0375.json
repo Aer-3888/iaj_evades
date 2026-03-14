@@ -45,11 +45,11 @@
     40,
     41
   ],
-  "generations_completed": 410,
+  "generations_completed": 375,
   "best_metrics": {
-    "fitness": 2186.2266,
-    "average_progress": 336.75983,
-    "average_rightward_reward": 336.75983,
+    "fitness": 2138.4575,
+    "average_progress": 329.4405,
+    "average_rightward_reward": 329.4405,
     "wins": 0
   },
   "genome": {
@@ -430,16 +430,6 @@
         "order": 0.125
       },
       {
-        "id": 7797,
-        "kind": "Hidden",
-        "order": 0.125
-      },
-      {
-        "id": 7840,
-        "kind": "Hidden",
-        "order": 0.125
-      },
-      {
         "id": 680,
         "kind": "Hidden",
         "order": 0.25
@@ -755,46 +745,6 @@
         "order": 0.25
       },
       {
-        "id": 7642,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 7661,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 7830,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 8009,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 8030,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 8035,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 8085,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
-        "id": 8101,
-        "kind": "Hidden",
-        "order": 0.25
-      },
-      {
         "id": 2724,
         "kind": "Hidden",
         "order": 0.375
@@ -851,11 +801,6 @@
       },
       {
         "id": 7585,
-        "kind": "Hidden",
-        "order": 0.375
-      },
-      {
-        "id": 7993,
         "kind": "Hidden",
         "order": 0.375
       },
@@ -12320,11 +12265,6 @@
         "order": 0.5
       },
       {
-        "id": 7563,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7566,
         "kind": "Hidden",
         "order": 0.5
@@ -12335,32 +12275,12 @@
         "order": 0.5
       },
       {
-        "id": 7569,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7570,
         "kind": "Hidden",
         "order": 0.5
       },
       {
-        "id": 7574,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7575,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7578,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7588,
         "kind": "Hidden",
         "order": 0.5
       },
@@ -12405,22 +12325,12 @@
         "order": 0.5
       },
       {
-        "id": 7610,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7612,
         "kind": "Hidden",
         "order": 0.5
       },
       {
         "id": 7618,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7622,
         "kind": "Hidden",
         "order": 0.5
       },
@@ -12440,16 +12350,6 @@
         "order": 0.5
       },
       {
-        "id": 7629,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7632,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7633,
         "kind": "Hidden",
         "order": 0.5
@@ -12465,32 +12365,12 @@
         "order": 0.5
       },
       {
-        "id": 7639,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7645,
         "kind": "Hidden",
         "order": 0.5
       },
       {
         "id": 7649,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7651,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7654,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7656,
         "kind": "Hidden",
         "order": 0.5
       },
@@ -12505,42 +12385,7 @@
         "order": 0.5
       },
       {
-        "id": 7664,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7665,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7666,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7667,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7669,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7674,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7684,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7685,
         "kind": "Hidden",
         "order": 0.5
       },
@@ -12560,562 +12405,12 @@
         "order": 0.5
       },
       {
-        "id": 7696,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7701,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7702,
         "kind": "Hidden",
         "order": 0.5
       },
       {
-        "id": 7705,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7710,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7713,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7714,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7715,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
         "id": 7719,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7721,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7722,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7725,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7726,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7727,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7733,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7735,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7736,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7739,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7741,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7744,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7745,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7749,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7750,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7752,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7754,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7756,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7758,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7760,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7762,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7765,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7766,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7769,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7778,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7785,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7800,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7803,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7807,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7813,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7818,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7819,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7820,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7821,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7836,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7839,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7842,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7845,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7848,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7849,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7851,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7852,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7854,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7860,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7862,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7867,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7870,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7872,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7874,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7879,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7884,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7891,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7899,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7903,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7915,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7919,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7921,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7926,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7932,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7933,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7935,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7940,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7945,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7948,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7952,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7956,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7958,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7972,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7975,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7979,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7981,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7983,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7985,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 7997,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8001,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8002,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8004,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8010,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8026,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8032,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8034,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8039,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8043,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8050,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8054,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8055,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8064,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8068,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8073,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8080,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8088,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8099,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8100,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8110,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8115,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8120,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8128,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8155,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8161,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8163,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8164,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8180,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8227,
-        "kind": "Hidden",
-        "order": 0.5
-      },
-      {
-        "id": 8277,
         "kind": "Hidden",
         "order": 0.5
       },
@@ -13131,11 +12426,6 @@
       },
       {
         "id": 7219,
-        "kind": "Hidden",
-        "order": 0.625
-      },
-      {
-        "id": 7814,
         "kind": "Hidden",
         "order": 0.625
       },
@@ -13275,37 +12565,12 @@
         "order": 0.75
       },
       {
-        "id": 7509,
-        "kind": "Hidden",
-        "order": 0.75
-      },
-      {
         "id": 7523,
         "kind": "Hidden",
         "order": 0.75
       },
       {
         "id": 7601,
-        "kind": "Hidden",
-        "order": 0.75
-      },
-      {
-        "id": 7670,
-        "kind": "Hidden",
-        "order": 0.75
-      },
-      {
-        "id": 7686,
-        "kind": "Hidden",
-        "order": 0.75
-      },
-      {
-        "id": 7906,
-        "kind": "Hidden",
-        "order": 0.75
-      },
-      {
-        "id": 8066,
         "kind": "Hidden",
         "order": 0.75
       },
@@ -13365,5106 +12630,5064 @@
         "innovation": 0,
         "input": 0,
         "output": 74,
-        "weight": 0.19560337,
+        "weight": 1.3104653,
         "enabled": true
       },
       {
         "innovation": 1,
         "input": 0,
         "output": 75,
-        "weight": -0.25572568,
+        "weight": 0.31404838,
         "enabled": true
       },
       {
         "innovation": 2,
         "input": 0,
         "output": 76,
-        "weight": 0.03824845,
+        "weight": -0.31980833,
         "enabled": true
       },
       {
         "innovation": 3,
         "input": 0,
         "output": 77,
-        "weight": -0.26380232,
+        "weight": -0.91200644,
         "enabled": true
       },
       {
         "innovation": 4,
         "input": 0,
         "output": 78,
-        "weight": 0.6466036,
+        "weight": 1.4471118,
         "enabled": true
       },
       {
         "innovation": 5,
         "input": 0,
         "output": 79,
-        "weight": -0.59898055,
+        "weight": -0.9659344,
         "enabled": true
       },
       {
         "innovation": 6,
         "input": 0,
         "output": 80,
-        "weight": -1.0102185,
+        "weight": -0.105398506,
         "enabled": true
       },
       {
         "innovation": 7,
         "input": 0,
         "output": 81,
-        "weight": -0.41280448,
+        "weight": 1.9339824,
         "enabled": true
       },
       {
         "innovation": 8,
         "input": 0,
         "output": 82,
-        "weight": 0.035316646,
+        "weight": -0.63343453,
         "enabled": true
       },
       {
         "innovation": 9,
         "input": 1,
         "output": 74,
-        "weight": -0.56139493,
+        "weight": -0.5150316,
         "enabled": false
       },
       {
         "innovation": 10,
         "input": 1,
         "output": 75,
-        "weight": 0.20065787,
+        "weight": 0.9605957,
         "enabled": true
       },
       {
         "innovation": 11,
         "input": 1,
         "output": 76,
-        "weight": -1.1654254,
+        "weight": -0.2581382,
         "enabled": true
       },
       {
         "innovation": 12,
         "input": 1,
         "output": 77,
-        "weight": 0.279775,
+        "weight": -0.19584867,
         "enabled": true
       },
       {
         "innovation": 13,
         "input": 1,
         "output": 78,
-        "weight": 1.5284767,
+        "weight": 0.32063732,
         "enabled": true
       },
       {
         "innovation": 14,
         "input": 1,
         "output": 79,
-        "weight": 0.03132257,
+        "weight": 0.20426682,
         "enabled": true
       },
       {
         "innovation": 15,
         "input": 1,
         "output": 80,
-        "weight": -0.46087268,
+        "weight": 0.5357732,
         "enabled": true
       },
       {
         "innovation": 16,
         "input": 1,
         "output": 81,
-        "weight": -0.14603853,
+        "weight": -0.113693416,
         "enabled": true
       },
       {
         "innovation": 17,
         "input": 1,
         "output": 82,
-        "weight": -1.2432238,
+        "weight": -0.38569868,
         "enabled": true
       },
       {
         "innovation": 18,
         "input": 2,
         "output": 74,
-        "weight": -1.0294025,
+        "weight": -2.30182,
         "enabled": true
       },
       {
         "innovation": 19,
         "input": 2,
         "output": 75,
-        "weight": 0.16901088,
+        "weight": 1.468405,
         "enabled": true
       },
       {
         "innovation": 20,
         "input": 2,
         "output": 76,
-        "weight": -0.54904485,
+        "weight": 1.3576546,
         "enabled": true
       },
       {
         "innovation": 21,
         "input": 2,
         "output": 77,
-        "weight": -0.1605671,
+        "weight": -0.65806425,
         "enabled": true
       },
       {
         "innovation": 22,
         "input": 2,
         "output": 78,
-        "weight": 1.2871423,
+        "weight": 1.7058464,
         "enabled": true
       },
       {
         "innovation": 23,
         "input": 2,
         "output": 79,
-        "weight": -0.521013,
+        "weight": 1.6754022,
         "enabled": true
       },
       {
         "innovation": 24,
         "input": 2,
         "output": 80,
-        "weight": -0.73794127,
+        "weight": -0.98085195,
         "enabled": true
       },
       {
         "innovation": 25,
         "input": 2,
         "output": 81,
-        "weight": -0.6373706,
+        "weight": -0.9396045,
         "enabled": true
       },
       {
         "innovation": 26,
         "input": 2,
         "output": 82,
-        "weight": -0.813426,
+        "weight": 0.111949,
         "enabled": true
       },
       {
         "innovation": 27,
         "input": 3,
         "output": 74,
-        "weight": 1.9714949,
+        "weight": -0.62301135,
         "enabled": false
       },
       {
         "innovation": 28,
         "input": 3,
         "output": 75,
-        "weight": -0.19364825,
+        "weight": -0.104053974,
         "enabled": true
       },
       {
         "innovation": 29,
         "input": 3,
         "output": 76,
-        "weight": -0.90920055,
+        "weight": 0.5494764,
         "enabled": true
       },
       {
         "innovation": 30,
         "input": 3,
         "output": 77,
-        "weight": 0.17347217,
+        "weight": 1.700758,
         "enabled": true
       },
       {
         "innovation": 31,
         "input": 3,
         "output": 78,
-        "weight": 2.2876751,
+        "weight": 2.1026287,
         "enabled": true
       },
       {
         "innovation": 32,
         "input": 3,
         "output": 79,
-        "weight": 0.8509021,
+        "weight": -1.1183753,
         "enabled": true
       },
       {
         "innovation": 33,
         "input": 3,
         "output": 80,
-        "weight": -2.730711,
+        "weight": -3.0,
         "enabled": true
       },
       {
         "innovation": 34,
         "input": 3,
         "output": 81,
-        "weight": 0.39437464,
+        "weight": -0.80548656,
         "enabled": true
       },
       {
         "innovation": 35,
         "input": 3,
         "output": 82,
-        "weight": -0.3149863,
+        "weight": 1.6430409,
         "enabled": true
       },
       {
         "innovation": 36,
         "input": 4,
         "output": 74,
-        "weight": -0.5585568,
+        "weight": 1.2686502,
         "enabled": true
       },
       {
         "innovation": 37,
         "input": 4,
         "output": 75,
-        "weight": 0.5328063,
+        "weight": 1.8696359,
         "enabled": true
       },
       {
         "innovation": 38,
         "input": 4,
         "output": 76,
-        "weight": 0.71214044,
+        "weight": 0.12464571,
         "enabled": true
       },
       {
         "innovation": 39,
         "input": 4,
         "output": 77,
-        "weight": 0.3864557,
+        "weight": 0.6340753,
         "enabled": true
       },
       {
         "innovation": 40,
         "input": 4,
         "output": 78,
-        "weight": 0.54075414,
+        "weight": -0.39070678,
         "enabled": true
       },
       {
         "innovation": 41,
         "input": 4,
         "output": 79,
-        "weight": -2.1625693,
+        "weight": 0.65783376,
         "enabled": true
       },
       {
         "innovation": 42,
         "input": 4,
         "output": 80,
-        "weight": 0.62104845,
+        "weight": -0.0620687,
         "enabled": true
       },
       {
         "innovation": 43,
         "input": 4,
         "output": 81,
-        "weight": 0.855096,
+        "weight": -0.4016058,
         "enabled": false
       },
       {
         "innovation": 44,
         "input": 4,
         "output": 82,
-        "weight": -0.35103792,
+        "weight": 0.93942523,
         "enabled": true
       },
       {
         "innovation": 45,
         "input": 5,
         "output": 74,
-        "weight": -0.78281546,
+        "weight": 0.61069995,
         "enabled": true
       },
       {
         "innovation": 46,
         "input": 5,
         "output": 75,
-        "weight": 0.41771126,
+        "weight": -0.7134553,
         "enabled": true
       },
       {
         "innovation": 47,
         "input": 5,
         "output": 76,
-        "weight": 0.35274386,
+        "weight": -1.6458584,
         "enabled": true
       },
       {
         "innovation": 48,
         "input": 5,
         "output": 77,
-        "weight": -1.3139385,
+        "weight": 1.0528238,
         "enabled": true
       },
       {
         "innovation": 49,
         "input": 5,
         "output": 78,
-        "weight": 0.82379854,
+        "weight": 0.5709708,
         "enabled": true
       },
       {
         "innovation": 50,
         "input": 5,
         "output": 79,
-        "weight": 0.08506808,
+        "weight": 0.41415834,
         "enabled": true
       },
       {
         "innovation": 51,
         "input": 5,
         "output": 80,
-        "weight": -0.7624531,
+        "weight": -0.98259664,
         "enabled": true
       },
       {
         "innovation": 52,
         "input": 5,
         "output": 81,
-        "weight": 0.23362443,
+        "weight": 0.24686903,
         "enabled": false
       },
       {
         "innovation": 53,
         "input": 5,
         "output": 82,
-        "weight": 1.0477965,
+        "weight": -1.6915591,
         "enabled": true
       },
       {
         "innovation": 54,
         "input": 6,
         "output": 74,
-        "weight": -0.6952764,
+        "weight": 0.13729516,
         "enabled": true
       },
       {
         "innovation": 55,
         "input": 6,
         "output": 75,
-        "weight": 0.8792752,
+        "weight": 0.67188627,
         "enabled": true
       },
       {
         "innovation": 56,
         "input": 6,
         "output": 76,
-        "weight": -0.4361272,
+        "weight": -0.769232,
         "enabled": true
       },
       {
         "innovation": 57,
         "input": 6,
         "output": 77,
-        "weight": -0.6917498,
+        "weight": -0.5516782,
         "enabled": true
       },
       {
         "innovation": 58,
         "input": 6,
         "output": 78,
-        "weight": 2.1594756,
+        "weight": -0.3360983,
         "enabled": true
       },
       {
         "innovation": 59,
         "input": 6,
         "output": 79,
-        "weight": 0.017447054,
+        "weight": 0.03443545,
         "enabled": true
       },
       {
         "innovation": 60,
         "input": 6,
         "output": 80,
-        "weight": -0.8001907,
+        "weight": -0.83626807,
         "enabled": true
       },
       {
         "innovation": 61,
         "input": 6,
         "output": 81,
-        "weight": 0.0061815083,
+        "weight": 0.0985367,
         "enabled": true
       },
       {
         "innovation": 62,
         "input": 6,
         "output": 82,
-        "weight": -0.03946656,
+        "weight": 0.5752773,
         "enabled": true
       },
       {
         "innovation": 63,
         "input": 7,
         "output": 74,
-        "weight": 0.4989577,
+        "weight": -0.7332214,
         "enabled": true
       },
       {
         "innovation": 64,
         "input": 7,
         "output": 75,
-        "weight": -0.3326705,
+        "weight": -2.2016728,
         "enabled": true
       },
       {
         "innovation": 65,
         "input": 7,
         "output": 76,
-        "weight": -0.38414645,
+        "weight": 0.96495855,
         "enabled": true
       },
       {
         "innovation": 66,
         "input": 7,
         "output": 77,
-        "weight": 0.68325853,
+        "weight": 1.1880456,
         "enabled": true
       },
       {
         "innovation": 67,
         "input": 7,
         "output": 78,
-        "weight": 1.2581066,
+        "weight": -0.28272936,
         "enabled": true
       },
       {
         "innovation": 68,
         "input": 7,
         "output": 79,
-        "weight": -0.67210984,
+        "weight": 0.17707583,
         "enabled": true
       },
       {
         "innovation": 69,
         "input": 7,
         "output": 80,
-        "weight": 0.7736726,
+        "weight": 0.13072646,
         "enabled": true
       },
       {
         "innovation": 70,
         "input": 7,
         "output": 81,
-        "weight": 1.454706,
+        "weight": 1.0661857,
         "enabled": true
       },
       {
         "innovation": 71,
         "input": 7,
         "output": 82,
-        "weight": 0.13282022,
-        "enabled": true
+        "weight": 1.550707,
+        "enabled": false
       },
       {
         "innovation": 72,
         "input": 8,
         "output": 74,
-        "weight": -1.514024,
+        "weight": -0.33252072,
         "enabled": true
       },
       {
         "innovation": 73,
         "input": 8,
         "output": 75,
-        "weight": 0.19064963,
+        "weight": -0.22753343,
         "enabled": true
       },
       {
         "innovation": 74,
         "input": 8,
         "output": 76,
-        "weight": -1.6648974,
+        "weight": 0.059512377,
         "enabled": true
       },
       {
         "innovation": 75,
         "input": 8,
         "output": 77,
-        "weight": -0.0001898706,
+        "weight": -1.3379776,
         "enabled": true
       },
       {
         "innovation": 76,
         "input": 8,
         "output": 78,
-        "weight": 0.016378015,
+        "weight": -0.99110603,
         "enabled": true
       },
       {
         "innovation": 77,
         "input": 8,
         "output": 79,
-        "weight": 1.1067951,
+        "weight": 0.84273136,
         "enabled": true
       },
       {
         "innovation": 78,
         "input": 8,
         "output": 80,
-        "weight": 0.20581949,
+        "weight": -1.3482656,
         "enabled": true
       },
       {
         "innovation": 79,
         "input": 8,
         "output": 81,
-        "weight": 0.6838515,
+        "weight": 1.4274151,
         "enabled": true
       },
       {
         "innovation": 80,
         "input": 8,
         "output": 82,
-        "weight": -0.53631544,
+        "weight": -0.48388824,
         "enabled": true
       },
       {
         "innovation": 81,
         "input": 9,
         "output": 74,
-        "weight": -0.2506854,
+        "weight": -0.7541857,
         "enabled": true
       },
       {
         "innovation": 82,
         "input": 9,
         "output": 75,
-        "weight": -0.24361758,
+        "weight": -0.45013815,
         "enabled": true
       },
       {
         "innovation": 83,
         "input": 9,
         "output": 76,
-        "weight": -0.6368536,
+        "weight": -0.06427097,
         "enabled": true
       },
       {
         "innovation": 84,
         "input": 9,
         "output": 77,
-        "weight": 0.7834056,
+        "weight": 1.0827627,
         "enabled": true
       },
       {
         "innovation": 85,
         "input": 9,
         "output": 78,
-        "weight": 0.89545643,
-        "enabled": false
+        "weight": 1.0175742,
+        "enabled": true
       },
       {
         "innovation": 86,
         "input": 9,
         "output": 79,
-        "weight": -0.7677766,
+        "weight": 0.22698855,
         "enabled": true
       },
       {
         "innovation": 87,
         "input": 9,
         "output": 80,
-        "weight": 0.12703434,
+        "weight": 0.13414553,
         "enabled": true
       },
       {
         "innovation": 88,
         "input": 9,
         "output": 81,
-        "weight": 1.0616829,
+        "weight": -0.09748095,
         "enabled": true
       },
       {
         "innovation": 89,
         "input": 9,
         "output": 82,
-        "weight": -0.9037818,
+        "weight": 1.6924123,
         "enabled": true
       },
       {
         "innovation": 90,
         "input": 10,
         "output": 74,
-        "weight": -0.28043577,
+        "weight": 0.9862802,
         "enabled": true
       },
       {
         "innovation": 91,
         "input": 10,
         "output": 75,
-        "weight": -1.956263,
+        "weight": 1.4754047,
         "enabled": true
       },
       {
         "innovation": 92,
         "input": 10,
         "output": 76,
-        "weight": -0.12775981,
+        "weight": -1.1221862,
         "enabled": true
       },
       {
         "innovation": 93,
         "input": 10,
         "output": 77,
-        "weight": 1.1142312,
+        "weight": 1.1961911,
         "enabled": true
       },
       {
         "innovation": 94,
         "input": 10,
         "output": 78,
-        "weight": -0.26959682,
+        "weight": -0.7733431,
         "enabled": true
       },
       {
         "innovation": 95,
         "input": 10,
         "output": 79,
-        "weight": -0.4898211,
+        "weight": 1.0203286,
         "enabled": true
       },
       {
         "innovation": 96,
         "input": 10,
         "output": 80,
-        "weight": -1.1732047,
+        "weight": -1.0901504,
         "enabled": true
       },
       {
         "innovation": 97,
         "input": 10,
         "output": 81,
-        "weight": 0.028360665,
+        "weight": 0.51882195,
         "enabled": true
       },
       {
         "innovation": 98,
         "input": 10,
         "output": 82,
-        "weight": 0.24131489,
+        "weight": 0.7155576,
         "enabled": true
       },
       {
         "innovation": 99,
         "input": 11,
         "output": 74,
-        "weight": 0.17821714,
+        "weight": 0.65026045,
         "enabled": true
       },
       {
         "innovation": 100,
         "input": 11,
         "output": 75,
-        "weight": -0.5938009,
+        "weight": 0.7390975,
         "enabled": true
       },
       {
         "innovation": 101,
         "input": 11,
         "output": 76,
-        "weight": -1.3861377,
+        "weight": -0.015966117,
         "enabled": true
       },
       {
         "innovation": 102,
         "input": 11,
         "output": 77,
-        "weight": -0.9195269,
+        "weight": 1.4631897,
         "enabled": true
       },
       {
         "innovation": 103,
         "input": 11,
         "output": 78,
-        "weight": 0.8772644,
+        "weight": -0.022831038,
         "enabled": true
       },
       {
         "innovation": 104,
         "input": 11,
         "output": 79,
-        "weight": -0.48046425,
+        "weight": -0.5106436,
         "enabled": true
       },
       {
         "innovation": 105,
         "input": 11,
         "output": 80,
-        "weight": -0.2510714,
+        "weight": -0.22217461,
         "enabled": true
       },
       {
         "innovation": 106,
         "input": 11,
         "output": 81,
-        "weight": 0.6708399,
+        "weight": -0.47553715,
         "enabled": true
       },
       {
         "innovation": 107,
         "input": 11,
         "output": 82,
-        "weight": -0.6060064,
+        "weight": -0.9953301,
         "enabled": true
       },
       {
         "innovation": 108,
         "input": 12,
         "output": 74,
-        "weight": 0.120704636,
+        "weight": -1.2202255,
         "enabled": true
       },
       {
         "innovation": 109,
         "input": 12,
         "output": 75,
-        "weight": -0.46409416,
+        "weight": -0.6756898,
         "enabled": true
       },
       {
         "innovation": 110,
         "input": 12,
         "output": 76,
-        "weight": 0.7185024,
+        "weight": -0.86470544,
         "enabled": true
       },
       {
         "innovation": 111,
         "input": 12,
         "output": 77,
-        "weight": -0.013852209,
+        "weight": 0.17906225,
         "enabled": true
       },
       {
         "innovation": 112,
         "input": 12,
         "output": 78,
-        "weight": -0.2702065,
+        "weight": -1.0668697,
         "enabled": true
       },
       {
         "innovation": 113,
         "input": 12,
         "output": 79,
-        "weight": 2.8034215,
+        "weight": 1.1078291,
         "enabled": true
       },
       {
         "innovation": 114,
         "input": 12,
         "output": 80,
-        "weight": 1.423368,
+        "weight": -1.0207008,
         "enabled": true
       },
       {
         "innovation": 115,
         "input": 12,
         "output": 81,
-        "weight": 0.24773622,
+        "weight": -1.1232563,
         "enabled": true
       },
       {
         "innovation": 116,
         "input": 12,
         "output": 82,
-        "weight": -1.1104466,
+        "weight": -0.92631507,
         "enabled": true
       },
       {
         "innovation": 117,
         "input": 13,
         "output": 74,
-        "weight": 1.3639402,
+        "weight": -1.7396497,
         "enabled": true
       },
       {
         "innovation": 118,
         "input": 13,
         "output": 75,
-        "weight": -1.0781442,
+        "weight": 1.4162288,
         "enabled": true
       },
       {
         "innovation": 119,
         "input": 13,
         "output": 76,
-        "weight": 0.55192363,
+        "weight": -0.32826924,
         "enabled": true
       },
       {
         "innovation": 120,
         "input": 13,
         "output": 77,
-        "weight": 0.048877686,
+        "weight": 0.067938864,
         "enabled": false
       },
       {
         "innovation": 121,
         "input": 13,
         "output": 78,
-        "weight": -0.18223481,
+        "weight": -0.021229655,
         "enabled": true
       },
       {
         "innovation": 122,
         "input": 13,
         "output": 79,
-        "weight": 2.9482734,
+        "weight": -0.15691832,
         "enabled": true
       },
       {
         "innovation": 123,
         "input": 13,
         "output": 80,
-        "weight": 1.1411955,
+        "weight": 0.42146808,
         "enabled": true
       },
       {
         "innovation": 124,
         "input": 13,
         "output": 81,
-        "weight": 1.4292898,
+        "weight": 0.48805547,
         "enabled": true
       },
       {
         "innovation": 125,
         "input": 13,
         "output": 82,
-        "weight": 0.162484,
+        "weight": 0.6950383,
         "enabled": true
       },
       {
         "innovation": 126,
         "input": 14,
         "output": 74,
-        "weight": -0.6403618,
+        "weight": -0.51585627,
         "enabled": true
       },
       {
         "innovation": 127,
         "input": 14,
         "output": 75,
-        "weight": 1.3117924,
+        "weight": 0.44478878,
         "enabled": true
       },
       {
         "innovation": 128,
         "input": 14,
         "output": 76,
-        "weight": -0.93065,
+        "weight": 0.67185366,
         "enabled": true
       },
       {
         "innovation": 129,
         "input": 14,
         "output": 77,
-        "weight": 2.734949,
+        "weight": 1.4964088,
         "enabled": true
       },
       {
         "innovation": 130,
         "input": 14,
         "output": 78,
-        "weight": 0.047620952,
+        "weight": -0.8192535,
         "enabled": true
       },
       {
         "innovation": 131,
         "input": 14,
         "output": 79,
-        "weight": -0.50072765,
+        "weight": 0.024632305,
         "enabled": true
       },
       {
         "innovation": 132,
         "input": 14,
         "output": 80,
-        "weight": 0.47015992,
+        "weight": 0.21340111,
         "enabled": false
       },
       {
         "innovation": 133,
         "input": 14,
         "output": 81,
-        "weight": 0.90270996,
+        "weight": 0.10875814,
         "enabled": true
       },
       {
         "innovation": 134,
         "input": 14,
         "output": 82,
-        "weight": 0.8000312,
+        "weight": 0.17414269,
         "enabled": true
       },
       {
         "innovation": 135,
         "input": 15,
         "output": 74,
-        "weight": 0.5315423,
+        "weight": -2.1328819,
         "enabled": true
       },
       {
         "innovation": 136,
         "input": 15,
         "output": 75,
-        "weight": -1.1063467,
+        "weight": 0.694952,
         "enabled": true
       },
       {
         "innovation": 137,
         "input": 15,
         "output": 76,
-        "weight": -0.7013099,
+        "weight": -0.90191233,
         "enabled": false
       },
       {
         "innovation": 138,
         "input": 15,
         "output": 77,
-        "weight": 0.4208853,
+        "weight": -0.5933356,
         "enabled": true
       },
       {
         "innovation": 139,
         "input": 15,
         "output": 78,
-        "weight": -0.8819881,
+        "weight": -0.43546307,
         "enabled": true
       },
       {
         "innovation": 140,
         "input": 15,
         "output": 79,
-        "weight": 0.2910622,
+        "weight": 1.2186128,
         "enabled": true
       },
       {
         "innovation": 141,
         "input": 15,
         "output": 80,
-        "weight": -1.2418605,
+        "weight": -0.8607167,
         "enabled": true
       },
       {
         "innovation": 142,
         "input": 15,
         "output": 81,
-        "weight": 1.2337148,
+        "weight": 0.14733958,
         "enabled": true
       },
       {
         "innovation": 143,
         "input": 15,
         "output": 82,
-        "weight": -0.85988086,
+        "weight": 0.33996728,
         "enabled": true
       },
       {
         "innovation": 144,
         "input": 16,
         "output": 74,
-        "weight": 0.20977806,
+        "weight": 0.9164326,
         "enabled": true
       },
       {
         "innovation": 145,
         "input": 16,
         "output": 75,
-        "weight": 0.75083387,
+        "weight": -1.113809,
         "enabled": true
       },
       {
         "innovation": 146,
         "input": 16,
         "output": 76,
-        "weight": -0.38002586,
+        "weight": 0.044995815,
         "enabled": false
       },
       {
         "innovation": 147,
         "input": 16,
         "output": 77,
-        "weight": 0.08679789,
+        "weight": 0.29834053,
         "enabled": true
       },
       {
         "innovation": 148,
         "input": 16,
         "output": 78,
-        "weight": -0.06697969,
+        "weight": -0.8192137,
         "enabled": true
       },
       {
         "innovation": 149,
         "input": 16,
         "output": 79,
-        "weight": -1.4868255,
+        "weight": -0.124568135,
         "enabled": true
       },
       {
         "innovation": 150,
         "input": 16,
         "output": 80,
-        "weight": 0.8265004,
+        "weight": -1.1135906,
         "enabled": true
       },
       {
         "innovation": 151,
         "input": 16,
         "output": 81,
-        "weight": -0.40409815,
+        "weight": 1.2877874,
         "enabled": true
       },
       {
         "innovation": 152,
         "input": 16,
         "output": 82,
-        "weight": -0.7917417,
+        "weight": -1.542505,
         "enabled": true
       },
       {
         "innovation": 153,
         "input": 17,
         "output": 74,
-        "weight": -0.95219827,
+        "weight": 0.5190097,
         "enabled": true
       },
       {
         "innovation": 154,
         "input": 17,
         "output": 75,
-        "weight": -0.6336992,
+        "weight": 0.729193,
         "enabled": true
       },
       {
         "innovation": 155,
         "input": 17,
         "output": 76,
-        "weight": 1.2651527,
+        "weight": -1.6611143,
         "enabled": true
       },
       {
         "innovation": 156,
         "input": 17,
         "output": 77,
-        "weight": -0.106764436,
+        "weight": -1.6894473,
         "enabled": true
       },
       {
         "innovation": 157,
         "input": 17,
         "output": 78,
-        "weight": -1.8738656,
+        "weight": 1.0080088,
         "enabled": true
       },
       {
         "innovation": 158,
         "input": 17,
         "output": 79,
-        "weight": -0.7213605,
+        "weight": -0.82486147,
         "enabled": true
       },
       {
         "innovation": 159,
         "input": 17,
         "output": 80,
-        "weight": -0.67046803,
+        "weight": -0.25094962,
         "enabled": true
       },
       {
         "innovation": 160,
         "input": 17,
         "output": 81,
-        "weight": -0.10885516,
+        "weight": -0.5993074,
         "enabled": true
       },
       {
         "innovation": 161,
         "input": 17,
         "output": 82,
-        "weight": 2.3307757,
+        "weight": -0.24221003,
         "enabled": true
       },
       {
         "innovation": 162,
         "input": 18,
         "output": 74,
-        "weight": -0.46185982,
+        "weight": 0.86395234,
         "enabled": true
       },
       {
         "innovation": 163,
         "input": 18,
         "output": 75,
-        "weight": -1.0806266,
+        "weight": 0.21414912,
         "enabled": true
       },
       {
         "innovation": 164,
         "input": 18,
         "output": 76,
-        "weight": -0.5345781,
+        "weight": 0.5386249,
         "enabled": true
       },
       {
         "innovation": 165,
         "input": 18,
         "output": 77,
-        "weight": -0.27305862,
+        "weight": -0.9110009,
         "enabled": true
       },
       {
         "innovation": 166,
         "input": 18,
         "output": 78,
-        "weight": 0.48846078,
+        "weight": 0.8758888,
         "enabled": false
       },
       {
         "innovation": 167,
         "input": 18,
         "output": 79,
-        "weight": -1.6270512,
+        "weight": 0.6878737,
         "enabled": true
       },
       {
         "innovation": 168,
         "input": 18,
         "output": 80,
-        "weight": -1.1854457,
+        "weight": -0.7028799,
         "enabled": true
       },
       {
         "innovation": 169,
         "input": 18,
         "output": 81,
-        "weight": 0.59106505,
+        "weight": 0.6915344,
         "enabled": true
       },
       {
         "innovation": 170,
         "input": 18,
         "output": 82,
-        "weight": -0.049062967,
+        "weight": -1.0495629,
         "enabled": true
       },
       {
         "innovation": 171,
         "input": 19,
         "output": 74,
-        "weight": -2.6971118,
+        "weight": -2.5163198,
         "enabled": true
       },
       {
         "innovation": 172,
         "input": 19,
         "output": 75,
-        "weight": -0.045048743,
+        "weight": 0.6329382,
         "enabled": true
       },
       {
         "innovation": 173,
         "input": 19,
         "output": 76,
-        "weight": -0.913355,
+        "weight": -1.2975299,
         "enabled": true
       },
       {
         "innovation": 174,
         "input": 19,
         "output": 77,
-        "weight": 0.107899725,
+        "weight": 0.06404263,
         "enabled": true
       },
       {
         "innovation": 175,
         "input": 19,
         "output": 78,
-        "weight": 1.8571409,
+        "weight": -0.26747537,
         "enabled": true
       },
       {
         "innovation": 176,
         "input": 19,
         "output": 79,
-        "weight": 1.0153534,
+        "weight": 1.9904218,
         "enabled": true
       },
       {
         "innovation": 177,
         "input": 19,
         "output": 80,
-        "weight": -1.1574641,
+        "weight": -0.330523,
         "enabled": true
       },
       {
         "innovation": 178,
         "input": 19,
         "output": 81,
-        "weight": -0.24983379,
+        "weight": 0.06524336,
         "enabled": true
       },
       {
         "innovation": 179,
         "input": 19,
         "output": 82,
-        "weight": -0.14201763,
+        "weight": -0.9466616,
         "enabled": true
       },
       {
         "innovation": 180,
         "input": 20,
         "output": 74,
-        "weight": 0.5331859,
+        "weight": 0.7492205,
         "enabled": true
       },
       {
         "innovation": 181,
         "input": 20,
         "output": 75,
-        "weight": -0.81631213,
+        "weight": 1.2717717,
         "enabled": true
       },
       {
         "innovation": 182,
         "input": 20,
         "output": 76,
-        "weight": -0.7850704,
+        "weight": -0.89424735,
         "enabled": true
       },
       {
         "innovation": 183,
         "input": 20,
         "output": 77,
-        "weight": 0.03034687,
+        "weight": -1.6201557,
         "enabled": true
       },
       {
         "innovation": 184,
         "input": 20,
         "output": 78,
-        "weight": 0.44210783,
+        "weight": 1.6946626,
         "enabled": true
       },
       {
         "innovation": 185,
         "input": 20,
         "output": 79,
-        "weight": -1.0422469,
+        "weight": -0.71062946,
         "enabled": true
       },
       {
         "innovation": 186,
         "input": 20,
         "output": 80,
-        "weight": -0.6343503,
+        "weight": 1.059637,
         "enabled": true
       },
       {
         "innovation": 187,
         "input": 20,
         "output": 81,
-        "weight": -0.8129736,
+        "weight": 0.12612,
         "enabled": true
       },
       {
         "innovation": 188,
         "input": 20,
         "output": 82,
-        "weight": 0.034868896,
+        "weight": 1.840308,
         "enabled": true
       },
       {
         "innovation": 189,
         "input": 21,
         "output": 74,
-        "weight": -1.2170984,
+        "weight": -0.38730836,
         "enabled": true
       },
       {
         "innovation": 190,
         "input": 21,
         "output": 75,
-        "weight": -0.9720664,
+        "weight": -0.07260299,
         "enabled": true
       },
       {
         "innovation": 191,
         "input": 21,
         "output": 76,
-        "weight": 1.1367397,
+        "weight": -0.84038,
         "enabled": true
       },
       {
         "innovation": 192,
         "input": 21,
         "output": 77,
-        "weight": -0.9651629,
+        "weight": -1.4709201,
         "enabled": true
       },
       {
         "innovation": 193,
         "input": 21,
         "output": 78,
-        "weight": 0.362996,
+        "weight": 0.44231457,
         "enabled": true
       },
       {
         "innovation": 194,
         "input": 21,
         "output": 79,
-        "weight": -0.88499975,
+        "weight": -0.89094734,
         "enabled": true
       },
       {
         "innovation": 195,
         "input": 21,
         "output": 80,
-        "weight": -0.7471148,
+        "weight": 1.5298805,
         "enabled": true
       },
       {
         "innovation": 196,
         "input": 21,
         "output": 81,
-        "weight": -0.59655225,
+        "weight": -0.12386297,
         "enabled": true
       },
       {
         "innovation": 197,
         "input": 21,
         "output": 82,
-        "weight": 0.22018592,
+        "weight": -1.1916549,
         "enabled": true
       },
       {
         "innovation": 198,
         "input": 22,
         "output": 74,
-        "weight": -0.0032435358,
+        "weight": 1.0937656,
         "enabled": true
       },
       {
         "innovation": 199,
         "input": 22,
         "output": 75,
-        "weight": -0.15661043,
+        "weight": -0.13320485,
         "enabled": true
       },
       {
         "innovation": 200,
         "input": 22,
         "output": 76,
-        "weight": 0.2379396,
+        "weight": -0.34512293,
         "enabled": true
       },
       {
         "innovation": 201,
         "input": 22,
         "output": 77,
-        "weight": -0.40433156,
+        "weight": 0.50385785,
         "enabled": true
       },
       {
         "innovation": 202,
         "input": 22,
         "output": 78,
-        "weight": 0.25143275,
+        "weight": 0.193429,
         "enabled": true
       },
       {
         "innovation": 203,
         "input": 22,
         "output": 79,
-        "weight": -0.33197275,
+        "weight": -0.46504292,
         "enabled": true
       },
       {
         "innovation": 204,
         "input": 22,
         "output": 80,
-        "weight": 1.9729271,
+        "weight": 1.6300846,
         "enabled": true
       },
       {
         "innovation": 205,
         "input": 22,
         "output": 81,
-        "weight": -0.62604475,
+        "weight": -0.7598872,
         "enabled": true
       },
       {
         "innovation": 206,
         "input": 22,
         "output": 82,
-        "weight": 0.16591664,
+        "weight": -0.9020854,
         "enabled": true
       },
       {
         "innovation": 207,
         "input": 23,
         "output": 74,
-        "weight": -0.7118657,
+        "weight": 2.131678,
         "enabled": true
       },
       {
         "innovation": 208,
         "input": 23,
         "output": 75,
-        "weight": -1.661682,
+        "weight": -0.30887106,
         "enabled": true
       },
       {
         "innovation": 209,
         "input": 23,
         "output": 76,
-        "weight": -1.2023562,
+        "weight": 0.7289731,
         "enabled": true
       },
       {
         "innovation": 210,
         "input": 23,
         "output": 77,
-        "weight": 0.45217848,
+        "weight": 0.37797967,
         "enabled": true
       },
       {
         "innovation": 211,
         "input": 23,
         "output": 78,
-        "weight": -1.0532649,
+        "weight": -0.37861952,
         "enabled": true
       },
       {
         "innovation": 212,
         "input": 23,
         "output": 79,
-        "weight": 0.5765812,
+        "weight": 0.7883024,
         "enabled": true
       },
       {
         "innovation": 213,
         "input": 23,
         "output": 80,
-        "weight": -0.1536012,
+        "weight": 0.028517723,
         "enabled": true
       },
       {
         "innovation": 214,
         "input": 23,
         "output": 81,
-        "weight": -1.0642498,
+        "weight": -0.39187905,
         "enabled": true
       },
       {
         "innovation": 215,
         "input": 23,
         "output": 82,
-        "weight": 2.1713815,
+        "weight": -0.06602347,
         "enabled": true
       },
       {
         "innovation": 216,
         "input": 24,
         "output": 74,
-        "weight": -0.44774863,
+        "weight": -1.0535423,
         "enabled": true
       },
       {
         "innovation": 217,
         "input": 24,
         "output": 75,
-        "weight": -0.3164355,
+        "weight": -0.4518291,
         "enabled": true
       },
       {
         "innovation": 218,
         "input": 24,
         "output": 76,
-        "weight": 1.3945459,
+        "weight": 0.79819393,
         "enabled": true
       },
       {
         "innovation": 219,
         "input": 24,
         "output": 77,
-        "weight": 0.44079357,
+        "weight": 0.41734102,
         "enabled": true
       },
       {
         "innovation": 220,
         "input": 24,
         "output": 78,
-        "weight": -0.53495336,
+        "weight": 0.5352663,
         "enabled": true
       },
       {
         "innovation": 221,
         "input": 24,
         "output": 79,
-        "weight": 0.008420199,
+        "weight": -0.64744186,
         "enabled": true
       },
       {
         "innovation": 222,
         "input": 24,
         "output": 80,
-        "weight": 1.1108944,
+        "weight": 0.44545043,
         "enabled": true
       },
       {
         "innovation": 223,
         "input": 24,
         "output": 81,
-        "weight": 0.41394496,
+        "weight": -1.5136715,
         "enabled": true
       },
       {
         "innovation": 224,
         "input": 24,
         "output": 82,
-        "weight": 0.96373844,
+        "weight": -0.26876926,
         "enabled": true
       },
       {
         "innovation": 225,
         "input": 25,
         "output": 74,
-        "weight": -1.1998537,
+        "weight": -0.28958324,
         "enabled": true
       },
       {
         "innovation": 226,
         "input": 25,
         "output": 75,
-        "weight": 0.16750968,
+        "weight": 0.18445827,
         "enabled": true
       },
       {
         "innovation": 227,
         "input": 25,
         "output": 76,
-        "weight": -0.5473999,
+        "weight": -0.78258634,
         "enabled": true
       },
       {
         "innovation": 228,
         "input": 25,
         "output": 77,
-        "weight": -1.3638494,
+        "weight": -0.32831272,
         "enabled": true
       },
       {
         "innovation": 229,
         "input": 25,
         "output": 78,
-        "weight": -0.3449555,
+        "weight": -0.69534016,
         "enabled": true
       },
       {
         "innovation": 230,
         "input": 25,
         "output": 79,
-        "weight": -0.5575229,
+        "weight": -1.0511574,
         "enabled": false
       },
       {
         "innovation": 231,
         "input": 25,
         "output": 80,
-        "weight": 0.56408274,
+        "weight": 1.3599513,
         "enabled": true
       },
       {
         "innovation": 232,
         "input": 25,
         "output": 81,
-        "weight": 0.7008939,
+        "weight": 1.7504325,
         "enabled": true
       },
       {
         "innovation": 233,
         "input": 25,
         "output": 82,
-        "weight": 1.4781443,
+        "weight": -0.6334799,
         "enabled": true
       },
       {
         "innovation": 234,
         "input": 26,
         "output": 74,
-        "weight": -0.3882095,
+        "weight": 0.7025863,
         "enabled": true
       },
       {
         "innovation": 235,
         "input": 26,
         "output": 75,
-        "weight": 0.6843883,
+        "weight": 0.39207488,
         "enabled": true
       },
       {
         "innovation": 236,
         "input": 26,
         "output": 76,
-        "weight": 0.8573611,
+        "weight": 0.7936445,
         "enabled": true
       },
       {
         "innovation": 237,
         "input": 26,
         "output": 77,
-        "weight": -1.2843858,
+        "weight": -0.75836265,
         "enabled": true
       },
       {
         "innovation": 238,
         "input": 26,
         "output": 78,
-        "weight": -0.8703586,
+        "weight": -0.5676712,
         "enabled": true
       },
       {
         "innovation": 239,
         "input": 26,
         "output": 79,
-        "weight": -0.17626593,
+        "weight": -0.8034319,
         "enabled": true
       },
       {
         "innovation": 240,
         "input": 26,
         "output": 80,
-        "weight": 0.4707672,
+        "weight": -0.8652525,
         "enabled": true
       },
       {
         "innovation": 241,
         "input": 26,
         "output": 81,
-        "weight": -1.1989515,
+        "weight": 0.09613225,
         "enabled": true
       },
       {
         "innovation": 242,
         "input": 26,
         "output": 82,
-        "weight": 0.65611196,
+        "weight": -0.2486951,
         "enabled": true
       },
       {
         "innovation": 243,
         "input": 27,
         "output": 74,
-        "weight": -0.2607152,
+        "weight": 0.5822122,
         "enabled": true
       },
       {
         "innovation": 244,
         "input": 27,
         "output": 75,
-        "weight": -0.8263144,
+        "weight": 2.0369916,
         "enabled": true
       },
       {
         "innovation": 245,
         "input": 27,
         "output": 76,
-        "weight": 0.18120301,
+        "weight": 0.09526834,
         "enabled": true
       },
       {
         "innovation": 246,
         "input": 27,
         "output": 77,
-        "weight": -0.29769552,
+        "weight": -0.37219858,
         "enabled": true
       },
       {
         "innovation": 247,
         "input": 27,
         "output": 78,
-        "weight": 0.6981631,
+        "weight": -0.9070364,
         "enabled": true
       },
       {
         "innovation": 248,
         "input": 27,
         "output": 79,
-        "weight": -0.30664706,
+        "weight": 0.37054422,
         "enabled": true
       },
       {
         "innovation": 249,
         "input": 27,
         "output": 80,
-        "weight": -0.4453034,
+        "weight": -0.22622985,
         "enabled": true
       },
       {
         "innovation": 250,
         "input": 27,
         "output": 81,
-        "weight": -0.50925666,
+        "weight": -0.39901778,
         "enabled": true
       },
       {
         "innovation": 251,
         "input": 27,
         "output": 82,
-        "weight": -0.82216126,
+        "weight": 1.1632239,
         "enabled": true
       },
       {
         "innovation": 252,
         "input": 28,
         "output": 74,
-        "weight": -0.6734964,
+        "weight": 0.26019892,
         "enabled": false
       },
       {
         "innovation": 253,
         "input": 28,
         "output": 75,
-        "weight": -1.2727566,
+        "weight": -0.36401558,
         "enabled": true
       },
       {
         "innovation": 254,
         "input": 28,
         "output": 76,
-        "weight": 0.85068417,
+        "weight": -0.61901444,
         "enabled": true
       },
       {
         "innovation": 255,
         "input": 28,
         "output": 77,
-        "weight": 0.02597782,
+        "weight": 0.13170615,
         "enabled": true
       },
       {
         "innovation": 256,
         "input": 28,
         "output": 78,
-        "weight": -0.32179338,
+        "weight": -0.47709092,
         "enabled": true
       },
       {
         "innovation": 257,
         "input": 28,
         "output": 79,
-        "weight": -0.5298542,
+        "weight": -0.39520457,
         "enabled": true
       },
       {
         "innovation": 258,
         "input": 28,
         "output": 80,
-        "weight": 0.4667643,
+        "weight": -0.14960665,
         "enabled": true
       },
       {
         "innovation": 259,
         "input": 28,
         "output": 81,
-        "weight": 1.7161486,
+        "weight": 1.7283224,
         "enabled": true
       },
       {
         "innovation": 260,
         "input": 28,
         "output": 82,
-        "weight": 1.6646439,
+        "weight": 0.74243385,
         "enabled": true
       },
       {
         "innovation": 261,
         "input": 29,
         "output": 74,
-        "weight": -0.41969797,
+        "weight": -0.62855136,
         "enabled": true
       },
       {
         "innovation": 262,
         "input": 29,
         "output": 75,
-        "weight": 0.67914367,
+        "weight": 0.28451112,
         "enabled": true
       },
       {
         "innovation": 263,
         "input": 29,
         "output": 76,
-        "weight": -0.05300364,
+        "weight": 0.12025735,
         "enabled": true
       },
       {
         "innovation": 264,
         "input": 29,
         "output": 77,
-        "weight": 0.14571166,
+        "weight": -1.1666658,
         "enabled": true
       },
       {
         "innovation": 265,
         "input": 29,
         "output": 78,
-        "weight": 0.0299799,
+        "weight": -0.8541179,
         "enabled": true
       },
       {
         "innovation": 266,
         "input": 29,
         "output": 79,
-        "weight": 0.5859206,
+        "weight": 0.14196157,
         "enabled": true
       },
       {
         "innovation": 267,
         "input": 29,
         "output": 80,
-        "weight": 0.6786272,
+        "weight": -0.27224112,
         "enabled": true
       },
       {
         "innovation": 268,
         "input": 29,
         "output": 81,
-        "weight": 0.9134088,
+        "weight": -0.52579284,
         "enabled": true
       },
       {
         "innovation": 269,
         "input": 29,
         "output": 82,
-        "weight": -0.90226513,
+        "weight": -1.1178565,
         "enabled": true
       },
       {
         "innovation": 270,
         "input": 30,
         "output": 74,
-        "weight": -0.6150987,
+        "weight": 2.0184472,
         "enabled": false
       },
       {
         "innovation": 271,
         "input": 30,
         "output": 75,
-        "weight": -0.6259669,
+        "weight": 0.14963093,
         "enabled": true
       },
       {
         "innovation": 272,
         "input": 30,
         "output": 76,
-        "weight": 0.44761753,
+        "weight": 1.0298173,
         "enabled": true
       },
       {
         "innovation": 273,
         "input": 30,
         "output": 77,
-        "weight": -0.41441998,
+        "weight": 0.26608023,
         "enabled": true
       },
       {
         "innovation": 274,
         "input": 30,
         "output": 78,
-        "weight": 0.3767023,
+        "weight": 0.0843804,
         "enabled": true
       },
       {
         "innovation": 275,
         "input": 30,
         "output": 79,
-        "weight": -2.0796402,
+        "weight": 0.7248142,
         "enabled": true
       },
       {
         "innovation": 276,
         "input": 30,
         "output": 80,
-        "weight": 2.585851,
+        "weight": 2.1916952,
         "enabled": true
       },
       {
         "innovation": 277,
         "input": 30,
         "output": 81,
-        "weight": -0.42610428,
+        "weight": -0.9012489,
         "enabled": true
       },
       {
         "innovation": 278,
         "input": 30,
         "output": 82,
-        "weight": -0.22469005,
+        "weight": -0.39951572,
         "enabled": true
       },
       {
         "innovation": 279,
         "input": 31,
         "output": 74,
-        "weight": 1.0159924,
+        "weight": -0.9370494,
         "enabled": true
       },
       {
         "innovation": 280,
         "input": 31,
         "output": 75,
-        "weight": -2.4924145,
+        "weight": -0.039119482,
         "enabled": true
       },
       {
         "innovation": 281,
         "input": 31,
         "output": 76,
-        "weight": 0.38268617,
+        "weight": -0.13148347,
         "enabled": true
       },
       {
         "innovation": 282,
         "input": 31,
         "output": 77,
-        "weight": -0.26657456,
+        "weight": -0.8413999,
         "enabled": true
       },
       {
         "innovation": 283,
         "input": 31,
         "output": 78,
-        "weight": -1.5458318,
+        "weight": 1.6663663,
         "enabled": true
       },
       {
         "innovation": 284,
         "input": 31,
         "output": 79,
-        "weight": -0.50970113,
+        "weight": 0.6222693,
         "enabled": true
       },
       {
         "innovation": 285,
         "input": 31,
         "output": 80,
-        "weight": 0.16478714,
+        "weight": 0.3653561,
         "enabled": true
       },
       {
         "innovation": 286,
         "input": 31,
         "output": 81,
-        "weight": 0.30104718,
+        "weight": 0.66788596,
         "enabled": false
       },
       {
         "innovation": 287,
         "input": 31,
         "output": 82,
-        "weight": 0.25257146,
+        "weight": 0.5863068,
         "enabled": true
       },
       {
         "innovation": 288,
         "input": 32,
         "output": 74,
-        "weight": 0.47527194,
+        "weight": 0.16190289,
         "enabled": true
       },
       {
         "innovation": 289,
         "input": 32,
         "output": 75,
-        "weight": 0.002194941,
+        "weight": -0.94860196,
         "enabled": true
       },
       {
         "innovation": 290,
         "input": 32,
         "output": 76,
-        "weight": -0.9068849,
+        "weight": 0.55940723,
         "enabled": true
       },
       {
         "innovation": 291,
         "input": 32,
         "output": 77,
-        "weight": -0.9259703,
+        "weight": 0.05859834,
         "enabled": true
       },
       {
         "innovation": 292,
         "input": 32,
         "output": 78,
-        "weight": 0.30362824,
+        "weight": 0.083017826,
         "enabled": true
       },
       {
         "innovation": 293,
         "input": 32,
         "output": 79,
-        "weight": 0.004343748,
+        "weight": -0.068227574,
         "enabled": true
       },
       {
         "innovation": 294,
         "input": 32,
         "output": 80,
-        "weight": 2.7609537,
+        "weight": 1.5936954,
         "enabled": true
       },
       {
         "innovation": 295,
         "input": 32,
         "output": 81,
-        "weight": -0.77051055,
+        "weight": -0.31052884,
         "enabled": true
       },
       {
         "innovation": 296,
         "input": 32,
         "output": 82,
-        "weight": -0.34087086,
+        "weight": -0.24208233,
         "enabled": true
       },
       {
         "innovation": 297,
         "input": 33,
         "output": 74,
-        "weight": 0.8756043,
+        "weight": 1.0478678,
         "enabled": true
       },
       {
         "innovation": 298,
         "input": 33,
         "output": 75,
-        "weight": 0.40365237,
+        "weight": -0.59717786,
         "enabled": true
       },
       {
         "innovation": 299,
         "input": 33,
         "output": 76,
-        "weight": 0.37857231,
+        "weight": -0.5053166,
         "enabled": true
       },
       {
         "innovation": 300,
         "input": 33,
         "output": 77,
-        "weight": 0.5397911,
+        "weight": 0.4524545,
         "enabled": true
       },
       {
         "innovation": 301,
         "input": 33,
         "output": 78,
-        "weight": 0.3127251,
+        "weight": 0.9430343,
         "enabled": true
       },
       {
         "innovation": 302,
         "input": 33,
         "output": 79,
-        "weight": -0.037443012,
+        "weight": 0.25833464,
         "enabled": true
       },
       {
         "innovation": 303,
         "input": 33,
         "output": 80,
-        "weight": -0.41360578,
+        "weight": 0.6698867,
         "enabled": true
       },
       {
         "innovation": 304,
         "input": 33,
         "output": 81,
-        "weight": 0.1116914,
+        "weight": 0.38715202,
         "enabled": true
       },
       {
         "innovation": 305,
         "input": 33,
         "output": 82,
-        "weight": -0.38911197,
+        "weight": 1.1723278,
         "enabled": true
       },
       {
         "innovation": 306,
         "input": 34,
         "output": 74,
-        "weight": -0.75201356,
+        "weight": -0.42829627,
         "enabled": true
       },
       {
         "innovation": 307,
         "input": 34,
         "output": 75,
-        "weight": -1.3854848,
+        "weight": -1.6601925,
         "enabled": true
       },
       {
         "innovation": 308,
         "input": 34,
         "output": 76,
-        "weight": -0.42516857,
+        "weight": 0.8985311,
         "enabled": true
       },
       {
         "innovation": 309,
         "input": 34,
         "output": 77,
-        "weight": -1.5249496,
+        "weight": -1.3791969,
         "enabled": true
       },
       {
         "innovation": 310,
         "input": 34,
         "output": 78,
-        "weight": -0.013083488,
+        "weight": -0.5452971,
         "enabled": true
       },
       {
         "innovation": 311,
         "input": 34,
         "output": 79,
-        "weight": -0.78976774,
+        "weight": -1.281052,
         "enabled": true
       },
       {
         "innovation": 312,
         "input": 34,
         "output": 80,
-        "weight": -0.8131647,
+        "weight": -0.54575294,
         "enabled": true
       },
       {
         "innovation": 313,
         "input": 34,
         "output": 81,
-        "weight": 0.14817154,
+        "weight": -0.124118686,
         "enabled": true
       },
       {
         "innovation": 314,
         "input": 34,
         "output": 82,
-        "weight": -1.153087,
+        "weight": -0.37862587,
         "enabled": true
       },
       {
         "innovation": 315,
         "input": 35,
         "output": 74,
-        "weight": -0.2101641,
+        "weight": -0.16578045,
         "enabled": true
       },
       {
         "innovation": 316,
         "input": 35,
         "output": 75,
-        "weight": -0.32832825,
+        "weight": 0.9398732,
         "enabled": true
       },
       {
         "innovation": 317,
         "input": 35,
         "output": 76,
-        "weight": 0.3374994,
+        "weight": -1.7881501,
         "enabled": true
       },
       {
         "innovation": 318,
         "input": 35,
         "output": 77,
-        "weight": -0.74523973,
+        "weight": 0.4613576,
         "enabled": false
       },
       {
         "innovation": 319,
         "input": 35,
         "output": 78,
-        "weight": 2.3185077,
+        "weight": 2.8963532,
         "enabled": true
       },
       {
         "innovation": 320,
         "input": 35,
         "output": 79,
-        "weight": -0.22767791,
+        "weight": -0.024966031,
         "enabled": true
       },
       {
         "innovation": 321,
         "input": 35,
         "output": 80,
-        "weight": 1.4337683,
+        "weight": 0.059928864,
         "enabled": true
       },
       {
         "innovation": 322,
         "input": 35,
         "output": 81,
-        "weight": -0.65259826,
+        "weight": -0.9278426,
         "enabled": true
       },
       {
         "innovation": 323,
         "input": 35,
         "output": 82,
-        "weight": 1.6382627,
+        "weight": 0.9456886,
         "enabled": true
       },
       {
         "innovation": 324,
         "input": 36,
         "output": 74,
-        "weight": -0.43380395,
+        "weight": -0.65461874,
         "enabled": true
       },
       {
         "innovation": 325,
         "input": 36,
         "output": 75,
-        "weight": -1.0177113,
+        "weight": -0.4640205,
         "enabled": true
       },
       {
         "innovation": 326,
         "input": 36,
         "output": 76,
-        "weight": -1.1464653,
+        "weight": -0.4236252,
         "enabled": true
       },
       {
         "innovation": 327,
         "input": 36,
         "output": 77,
-        "weight": 0.43202305,
+        "weight": 1.0131342,
         "enabled": true
       },
       {
         "innovation": 328,
         "input": 36,
         "output": 78,
-        "weight": -0.53928494,
+        "weight": -0.48898283,
         "enabled": true
       },
       {
         "innovation": 329,
         "input": 36,
         "output": 79,
-        "weight": -0.026865989,
+        "weight": 0.3486973,
         "enabled": true
       },
       {
         "innovation": 330,
         "input": 36,
         "output": 80,
-        "weight": -0.6470777,
+        "weight": 0.14387417,
         "enabled": true
       },
       {
         "innovation": 331,
         "input": 36,
         "output": 81,
-        "weight": -0.40078858,
+        "weight": 1.0964166,
         "enabled": true
       },
       {
         "innovation": 332,
         "input": 36,
         "output": 82,
-        "weight": -0.45782167,
+        "weight": -0.022718996,
         "enabled": true
       },
       {
         "innovation": 333,
         "input": 37,
         "output": 74,
-        "weight": -1.3618089,
+        "weight": -0.69854295,
         "enabled": true
       },
       {
         "innovation": 334,
         "input": 37,
         "output": 75,
-        "weight": 0.32901275,
+        "weight": -0.09611149,
         "enabled": true
       },
       {
         "innovation": 335,
         "input": 37,
         "output": 76,
-        "weight": -1.2849324,
+        "weight": 0.35690966,
         "enabled": true
       },
       {
         "innovation": 336,
         "input": 37,
         "output": 77,
-        "weight": 0.17355675,
+        "weight": 0.9431269,
         "enabled": true
       },
       {
         "innovation": 337,
         "input": 37,
         "output": 78,
-        "weight": 0.10699117,
+        "weight": 0.12459168,
         "enabled": true
       },
       {
         "innovation": 338,
         "input": 37,
         "output": 79,
-        "weight": 0.3495942,
+        "weight": 0.25113082,
         "enabled": true
       },
       {
         "innovation": 339,
         "input": 37,
         "output": 80,
-        "weight": 0.5658996,
+        "weight": -0.17906818,
         "enabled": true
       },
       {
         "innovation": 340,
         "input": 37,
         "output": 81,
-        "weight": -0.5508238,
+        "weight": 0.40967357,
         "enabled": true
       },
       {
         "innovation": 341,
         "input": 37,
         "output": 82,
-        "weight": 0.36803076,
+        "weight": -0.48256883,
         "enabled": true
       },
       {
         "innovation": 342,
         "input": 38,
         "output": 74,
-        "weight": 0.5216066,
+        "weight": 0.9854381,
         "enabled": true
       },
       {
         "innovation": 343,
         "input": 38,
         "output": 75,
-        "weight": -0.5775199,
+        "weight": -0.26498556,
         "enabled": true
       },
       {
         "innovation": 344,
         "input": 38,
         "output": 76,
-        "weight": 0.4562027,
+        "weight": -0.058463573,
         "enabled": true
       },
       {
         "innovation": 345,
         "input": 38,
         "output": 77,
-        "weight": -0.15949434,
+        "weight": 0.12602559,
         "enabled": true
       },
       {
         "innovation": 346,
         "input": 38,
         "output": 78,
-        "weight": 1.6412251,
+        "weight": 0.42788213,
         "enabled": true
       },
       {
         "innovation": 347,
         "input": 38,
         "output": 79,
-        "weight": 1.5549963,
+        "weight": 0.7891026,
         "enabled": true
       },
       {
         "innovation": 348,
         "input": 38,
         "output": 80,
-        "weight": 0.27489057,
+        "weight": -1.8378668,
         "enabled": true
       },
       {
         "innovation": 349,
         "input": 38,
         "output": 81,
-        "weight": 0.48440677,
+        "weight": -0.6001308,
         "enabled": true
       },
       {
         "innovation": 350,
         "input": 38,
         "output": 82,
-        "weight": -0.8694377,
+        "weight": -0.5711303,
         "enabled": true
       },
       {
         "innovation": 351,
         "input": 39,
         "output": 74,
-        "weight": 0.03828071,
+        "weight": -0.91526616,
         "enabled": true
       },
       {
         "innovation": 352,
         "input": 39,
         "output": 75,
-        "weight": -0.22114465,
+        "weight": 0.7210041,
         "enabled": true
       },
       {
         "innovation": 353,
         "input": 39,
         "output": 76,
-        "weight": 0.44621372,
+        "weight": 0.10011381,
         "enabled": false
       },
       {
         "innovation": 354,
         "input": 39,
         "output": 77,
-        "weight": -0.14114976,
+        "weight": 0.87747467,
         "enabled": true
       },
       {
         "innovation": 355,
         "input": 39,
         "output": 78,
-        "weight": -0.6545044,
+        "weight": 0.098677635,
         "enabled": true
       },
       {
         "innovation": 356,
         "input": 39,
         "output": 79,
-        "weight": 1.2417284,
+        "weight": -0.65447116,
         "enabled": true
       },
       {
         "innovation": 357,
         "input": 39,
         "output": 80,
-        "weight": -0.5470842,
+        "weight": -0.5532831,
         "enabled": false
       },
       {
         "innovation": 358,
         "input": 39,
         "output": 81,
-        "weight": 0.8363972,
+        "weight": 0.05601397,
         "enabled": true
       },
       {
         "innovation": 359,
         "input": 39,
         "output": 82,
-        "weight": 0.71134365,
+        "weight": 0.77670723,
         "enabled": true
       },
       {
         "innovation": 360,
         "input": 40,
         "output": 74,
-        "weight": 0.88257545,
+        "weight": 0.6035182,
         "enabled": true
       },
       {
         "innovation": 361,
         "input": 40,
         "output": 75,
-        "weight": 2.1049848,
+        "weight": -0.13401744,
         "enabled": true
       },
       {
         "innovation": 362,
         "input": 40,
         "output": 76,
-        "weight": 0.5879667,
+        "weight": -1.0371871,
         "enabled": true
       },
       {
         "innovation": 363,
         "input": 40,
         "output": 77,
-        "weight": -0.1987991,
+        "weight": 0.018662691,
         "enabled": true
       },
       {
         "innovation": 364,
         "input": 40,
         "output": 78,
-        "weight": -0.43838987,
+        "weight": 1.9197888,
         "enabled": true
       },
       {
         "innovation": 365,
         "input": 40,
         "output": 79,
-        "weight": -0.066421986,
+        "weight": -1.0796099,
         "enabled": true
       },
       {
         "innovation": 366,
         "input": 40,
         "output": 80,
-        "weight": -1.5808526,
+        "weight": -0.6757028,
         "enabled": true
       },
       {
         "innovation": 367,
         "input": 40,
         "output": 81,
-        "weight": 0.7887256,
+        "weight": -1.2116556,
         "enabled": true
       },
       {
         "innovation": 368,
         "input": 40,
         "output": 82,
-        "weight": 0.0038270056,
+        "weight": -0.0685873,
         "enabled": true
       },
       {
         "innovation": 369,
         "input": 41,
         "output": 74,
-        "weight": 1.1681387,
+        "weight": 0.60102284,
         "enabled": true
       },
       {
         "innovation": 370,
         "input": 41,
         "output": 75,
-        "weight": -0.37319756,
+        "weight": 0.49848175,
         "enabled": true
       },
       {
         "innovation": 371,
         "input": 41,
         "output": 76,
-        "weight": -0.15837753,
+        "weight": -1.1619135,
         "enabled": true
       },
       {
         "innovation": 372,
         "input": 41,
         "output": 77,
-        "weight": -0.71904695,
+        "weight": 1.3431501,
         "enabled": true
       },
       {
         "innovation": 373,
         "input": 41,
         "output": 78,
-        "weight": -0.43152833,
+        "weight": 0.5496278,
         "enabled": true
       },
       {
         "innovation": 374,
         "input": 41,
         "output": 79,
-        "weight": -0.6913444,
+        "weight": 0.596521,
         "enabled": true
       },
       {
         "innovation": 375,
         "input": 41,
         "output": 80,
-        "weight": -0.0700109,
+        "weight": 0.61997074,
         "enabled": true
       },
       {
         "innovation": 376,
         "input": 41,
         "output": 81,
-        "weight": -0.12075803,
+        "weight": 1.0921805,
         "enabled": true
       },
       {
         "innovation": 377,
         "input": 41,
         "output": 82,
-        "weight": -0.30639997,
+        "weight": -1.8483945,
         "enabled": true
       },
       {
         "innovation": 378,
         "input": 42,
         "output": 74,
-        "weight": -1.1642479,
+        "weight": -0.3977838,
         "enabled": true
       },
       {
         "innovation": 379,
         "input": 42,
         "output": 75,
-        "weight": -0.21487987,
+        "weight": -0.635561,
         "enabled": true
       },
       {
         "innovation": 380,
         "input": 42,
         "output": 76,
-        "weight": -0.42711982,
+        "weight": -1.4665221,
         "enabled": true
       },
       {
         "innovation": 381,
         "input": 42,
         "output": 77,
-        "weight": -0.4108418,
+        "weight": 0.6135576,
         "enabled": true
       },
       {
         "innovation": 382,
         "input": 42,
         "output": 78,
-        "weight": 0.90799713,
+        "weight": 0.9433677,
         "enabled": true
       },
       {
         "innovation": 383,
         "input": 42,
         "output": 79,
-        "weight": 0.17606044,
+        "weight": -0.40909743,
         "enabled": true
       },
       {
         "innovation": 384,
         "input": 42,
         "output": 80,
-        "weight": 0.16994932,
+        "weight": -0.8172211,
         "enabled": true
       },
       {
         "innovation": 385,
         "input": 42,
         "output": 81,
-        "weight": -1.4059616,
+        "weight": -0.7955324,
         "enabled": true
       },
       {
         "innovation": 386,
         "input": 42,
         "output": 82,
-        "weight": -0.3374519,
+        "weight": 0.39066947,
         "enabled": true
       },
       {
         "innovation": 387,
         "input": 43,
         "output": 74,
-        "weight": -1.0439454,
+        "weight": 0.60610366,
         "enabled": true
       },
       {
         "innovation": 388,
         "input": 43,
         "output": 75,
-        "weight": 0.7190207,
+        "weight": -0.14608735,
         "enabled": true
       },
       {
         "innovation": 389,
         "input": 43,
         "output": 76,
-        "weight": -0.80402625,
+        "weight": -0.6011077,
         "enabled": true
       },
       {
         "innovation": 390,
         "input": 43,
         "output": 77,
-        "weight": 0.23694693,
+        "weight": -0.92370266,
         "enabled": true
       },
       {
         "innovation": 391,
         "input": 43,
         "output": 78,
-        "weight": -0.008693635,
+        "weight": -0.53444034,
         "enabled": true
       },
       {
         "innovation": 392,
         "input": 43,
         "output": 79,
-        "weight": -0.16511598,
-        "enabled": true
+        "weight": 0.021424234,
+        "enabled": false
       },
       {
         "innovation": 393,
         "input": 43,
         "output": 80,
-        "weight": 0.8237841,
+        "weight": -0.49879083,
         "enabled": true
       },
       {
         "innovation": 394,
         "input": 43,
         "output": 81,
-        "weight": 0.11346212,
+        "weight": -1.4328562,
         "enabled": true
       },
       {
         "innovation": 395,
         "input": 43,
         "output": 82,
-        "weight": -1.0868716,
+        "weight": -0.39413515,
         "enabled": true
       },
       {
         "innovation": 396,
         "input": 44,
         "output": 74,
-        "weight": -0.66660607,
+        "weight": 2.6769266,
         "enabled": true
       },
       {
         "innovation": 397,
         "input": 44,
         "output": 75,
-        "weight": -0.97453433,
+        "weight": -0.1824337,
         "enabled": true
       },
       {
         "innovation": 398,
         "input": 44,
         "output": 76,
-        "weight": 0.02894698,
+        "weight": 0.95804214,
         "enabled": true
       },
       {
         "innovation": 399,
         "input": 44,
         "output": 77,
-        "weight": 1.0828205,
+        "weight": -0.23591343,
         "enabled": true
       },
       {
         "innovation": 400,
         "input": 44,
         "output": 78,
-        "weight": 0.62488663,
+        "weight": -0.05584231,
         "enabled": true
       },
       {
         "innovation": 401,
         "input": 44,
         "output": 79,
-        "weight": 1.4497998,
+        "weight": 0.85544395,
         "enabled": true
       },
       {
         "innovation": 402,
         "input": 44,
         "output": 80,
-        "weight": 0.952906,
+        "weight": 0.55866575,
         "enabled": true
       },
       {
         "innovation": 403,
         "input": 44,
         "output": 81,
-        "weight": -0.53814167,
+        "weight": 0.6432843,
         "enabled": true
       },
       {
         "innovation": 404,
         "input": 44,
         "output": 82,
-        "weight": 0.63260746,
+        "weight": 0.70567274,
         "enabled": true
       },
       {
         "innovation": 405,
         "input": 45,
         "output": 74,
-        "weight": -0.26820222,
+        "weight": -0.90045476,
         "enabled": true
       },
       {
         "innovation": 406,
         "input": 45,
         "output": 75,
-        "weight": -1.9399667,
+        "weight": -0.054683983,
         "enabled": true
       },
       {
         "innovation": 407,
         "input": 45,
         "output": 76,
-        "weight": -0.7958688,
-        "enabled": true
+        "weight": -0.5456189,
+        "enabled": false
       },
       {
         "innovation": 408,
         "input": 45,
         "output": 77,
-        "weight": 0.40996683,
+        "weight": -0.7018663,
         "enabled": true
       },
       {
         "innovation": 409,
         "input": 45,
         "output": 78,
-        "weight": 0.14123169,
+        "weight": 0.12724781,
         "enabled": true
       },
       {
         "innovation": 410,
         "input": 45,
         "output": 79,
-        "weight": -1.0485672,
+        "weight": -1.2623363,
         "enabled": true
       },
       {
         "innovation": 411,
         "input": 45,
         "output": 80,
-        "weight": 0.3033568,
+        "weight": 0.74905086,
         "enabled": true
       },
       {
         "innovation": 412,
         "input": 45,
         "output": 81,
-        "weight": 0.3375432,
+        "weight": 0.3608324,
         "enabled": true
       },
       {
         "innovation": 413,
         "input": 45,
         "output": 82,
-        "weight": 0.8815613,
+        "weight": 0.7134667,
         "enabled": true
       },
       {
         "innovation": 414,
         "input": 46,
         "output": 74,
-        "weight": -0.6461011,
+        "weight": 0.036239356,
         "enabled": true
       },
       {
         "innovation": 415,
         "input": 46,
         "output": 75,
-        "weight": -0.71301043,
+        "weight": -0.73616433,
         "enabled": true
       },
       {
         "innovation": 416,
         "input": 46,
         "output": 76,
-        "weight": -0.41701967,
+        "weight": 0.58008456,
         "enabled": true
       },
       {
         "innovation": 417,
         "input": 46,
         "output": 77,
-        "weight": -0.9132873,
+        "weight": 1.2704353,
         "enabled": true
       },
       {
         "innovation": 418,
         "input": 46,
         "output": 78,
-        "weight": 0.13364357,
+        "weight": 0.26048943,
         "enabled": true
       },
       {
         "innovation": 419,
         "input": 46,
         "output": 79,
-        "weight": -0.45760742,
+        "weight": -0.86223507,
         "enabled": true
       },
       {
         "innovation": 420,
         "input": 46,
         "output": 80,
-        "weight": 1.0306162,
+        "weight": -1.5684415,
         "enabled": true
       },
       {
         "innovation": 421,
         "input": 46,
         "output": 81,
-        "weight": 1.319838,
+        "weight": -1.4258982,
         "enabled": true
       },
       {
         "innovation": 422,
         "input": 46,
         "output": 82,
-        "weight": 0.28929386,
+        "weight": 0.54285896,
         "enabled": true
       },
       {
         "innovation": 423,
         "input": 47,
         "output": 74,
-        "weight": 0.7606385,
+        "weight": 0.2715144,
         "enabled": true
       },
       {
         "innovation": 424,
         "input": 47,
         "output": 75,
-        "weight": 0.9018955,
+        "weight": 0.30097315,
         "enabled": true
       },
       {
         "innovation": 425,
         "input": 47,
         "output": 76,
-        "weight": 0.26523012,
+        "weight": -0.019778162,
         "enabled": true
       },
       {
         "innovation": 426,
         "input": 47,
         "output": 77,
-        "weight": -1.4193009,
+        "weight": 2.7860851,
         "enabled": true
       },
       {
         "innovation": 427,
         "input": 47,
         "output": 78,
-        "weight": -0.69108945,
+        "weight": -0.6402186,
         "enabled": true
       },
       {
         "innovation": 428,
         "input": 47,
         "output": 79,
-        "weight": 0.61270237,
+        "weight": 0.5800688,
         "enabled": true
       },
       {
         "innovation": 429,
         "input": 47,
         "output": 80,
-        "weight": 0.7875856,
+        "weight": 0.27009296,
         "enabled": true
       },
       {
         "innovation": 430,
         "input": 47,
         "output": 81,
-        "weight": -0.046819866,
+        "weight": -0.96539474,
         "enabled": true
       },
       {
         "innovation": 431,
         "input": 47,
         "output": 82,
-        "weight": 1.2291048,
+        "weight": 0.36931187,
         "enabled": true
       },
       {
         "innovation": 432,
         "input": 48,
         "output": 74,
-        "weight": -1.1219225,
+        "weight": 0.304707,
         "enabled": true
       },
       {
         "innovation": 433,
         "input": 48,
         "output": 75,
-        "weight": -0.6449625,
+        "weight": -1.3867489,
         "enabled": true
       },
       {
         "innovation": 434,
         "input": 48,
         "output": 76,
-        "weight": -0.08909778,
+        "weight": 1.028116,
         "enabled": true
       },
       {
         "innovation": 435,
         "input": 48,
         "output": 77,
-        "weight": -0.28391057,
+        "weight": -0.5181596,
         "enabled": true
       },
       {
         "innovation": 436,
         "input": 48,
         "output": 78,
-        "weight": -0.06321612,
+        "weight": -0.51718605,
         "enabled": true
       },
       {
         "innovation": 437,
         "input": 48,
         "output": 79,
-        "weight": 0.16098142,
+        "weight": -0.06360057,
         "enabled": true
       },
       {
         "innovation": 438,
         "input": 48,
         "output": 80,
-        "weight": 0.7479944,
+        "weight": -0.47377557,
         "enabled": true
       },
       {
         "innovation": 439,
         "input": 48,
         "output": 81,
-        "weight": 0.18472342,
+        "weight": 0.49695182,
         "enabled": true
       },
       {
         "innovation": 440,
         "input": 48,
         "output": 82,
-        "weight": 0.30645895,
+        "weight": -1.1411904,
         "enabled": true
       },
       {
         "innovation": 441,
         "input": 49,
         "output": 74,
-        "weight": 0.59922975,
+        "weight": -0.3619291,
         "enabled": true
       },
       {
         "innovation": 442,
         "input": 49,
         "output": 75,
-        "weight": 0.0018155575,
+        "weight": -0.6281569,
         "enabled": true
       },
       {
         "innovation": 443,
         "input": 49,
         "output": 76,
-        "weight": -2.537027,
+        "weight": 0.7112144,
         "enabled": true
       },
       {
         "innovation": 444,
         "input": 49,
         "output": 77,
-        "weight": 0.4443007,
+        "weight": 1.9237993,
         "enabled": true
       },
       {
         "innovation": 445,
         "input": 49,
         "output": 78,
-        "weight": 0.3431348,
+        "weight": 0.43217146,
         "enabled": true
       },
       {
         "innovation": 446,
         "input": 49,
         "output": 79,
-        "weight": 1.2119445,
+        "weight": -1.7153745,
         "enabled": true
       },
       {
         "innovation": 447,
         "input": 49,
         "output": 80,
-        "weight": -0.5780793,
+        "weight": -0.14611891,
         "enabled": true
       },
       {
         "innovation": 448,
         "input": 49,
         "output": 81,
-        "weight": 1.1005936,
+        "weight": -0.42930913,
         "enabled": true
       },
       {
         "innovation": 449,
         "input": 49,
         "output": 82,
-        "weight": -0.45888922,
+        "weight": 0.3350628,
         "enabled": true
       },
       {
         "innovation": 450,
         "input": 50,
         "output": 74,
-        "weight": -0.18568146,
+        "weight": -0.35637638,
         "enabled": true
       },
       {
         "innovation": 451,
         "input": 50,
         "output": 75,
-        "weight": -0.19207352,
+        "weight": 0.17672664,
         "enabled": true
       },
       {
         "innovation": 452,
         "input": 50,
         "output": 76,
-        "weight": 0.36936873,
+        "weight": -0.890504,
         "enabled": true
       },
       {
         "innovation": 453,
         "input": 50,
         "output": 77,
-        "weight": 0.45118782,
+        "weight": 0.46792907,
         "enabled": true
       },
       {
         "innovation": 454,
         "input": 50,
         "output": 78,
-        "weight": 0.42681223,
+        "weight": -0.712715,
         "enabled": true
       },
       {
         "innovation": 455,
         "input": 50,
         "output": 79,
-        "weight": 0.93689454,
+        "weight": -1.1144823,
         "enabled": true
       },
       {
         "innovation": 456,
         "input": 50,
         "output": 80,
-        "weight": 2.643802,
+        "weight": -0.56581056,
         "enabled": true
       },
       {
         "innovation": 457,
         "input": 50,
         "output": 81,
-        "weight": -0.77522177,
+        "weight": -0.023226231,
         "enabled": true
       },
       {
         "innovation": 458,
         "input": 50,
         "output": 82,
-        "weight": -0.19381672,
+        "weight": -1.030319,
         "enabled": true
       },
       {
         "innovation": 459,
         "input": 51,
         "output": 74,
-        "weight": -1.0388722,
+        "weight": 0.64243245,
         "enabled": true
       },
       {
         "innovation": 460,
         "input": 51,
         "output": 75,
-        "weight": -0.26733118,
+        "weight": -1.3537062,
         "enabled": true
       },
       {
         "innovation": 461,
         "input": 51,
         "output": 76,
-        "weight": -0.074164465,
+        "weight": -0.8805685,
         "enabled": true
       },
       {
         "innovation": 462,
         "input": 51,
         "output": 77,
-        "weight": -0.3597702,
+        "weight": -0.63856477,
         "enabled": true
       },
       {
         "innovation": 463,
         "input": 51,
         "output": 78,
-        "weight": 1.0674633,
+        "weight": 0.13603787,
         "enabled": true
       },
       {
         "innovation": 464,
         "input": 51,
         "output": 79,
-        "weight": -0.22741127,
+        "weight": 0.48907447,
         "enabled": true
       },
       {
         "innovation": 465,
         "input": 51,
         "output": 80,
-        "weight": -0.3094056,
+        "weight": -0.89072675,
         "enabled": true
       },
       {
         "innovation": 466,
         "input": 51,
         "output": 81,
-        "weight": 0.34241328,
+        "weight": -0.6788716,
         "enabled": true
       },
       {
         "innovation": 467,
         "input": 51,
         "output": 82,
-        "weight": -0.7249665,
+        "weight": -1.8869876,
         "enabled": true
       },
       {
         "innovation": 468,
         "input": 52,
         "output": 74,
-        "weight": 0.25877,
+        "weight": -0.17957377,
         "enabled": true
       },
       {
         "innovation": 469,
         "input": 52,
         "output": 75,
-        "weight": 0.86224484,
+        "weight": 0.09345925,
         "enabled": true
       },
       {
         "innovation": 470,
         "input": 52,
         "output": 76,
-        "weight": 0.1371139,
+        "weight": -1.7097254,
         "enabled": true
       },
       {
         "innovation": 471,
         "input": 52,
         "output": 77,
-        "weight": -2.4717865,
+        "weight": 0.43656328,
         "enabled": true
       },
       {
         "innovation": 472,
         "input": 52,
         "output": 78,
-        "weight": -0.3681099,
+        "weight": -0.2268399,
         "enabled": true
       },
       {
         "innovation": 473,
         "input": 52,
         "output": 79,
-        "weight": -0.34001756,
+        "weight": 0.54797566,
         "enabled": true
       },
       {
         "innovation": 474,
         "input": 52,
         "output": 80,
-        "weight": -0.6419394,
+        "weight": -2.2064621,
         "enabled": true
       },
       {
         "innovation": 475,
         "input": 52,
         "output": 81,
-        "weight": 1.1344447,
+        "weight": -0.32848778,
         "enabled": true
       },
       {
         "innovation": 476,
         "input": 52,
         "output": 82,
-        "weight": -0.3108141,
+        "weight": 1.8918521,
         "enabled": true
       },
       {
         "innovation": 477,
         "input": 53,
         "output": 74,
-        "weight": 0.3421771,
+        "weight": 0.5766387,
         "enabled": true
       },
       {
         "innovation": 478,
         "input": 53,
         "output": 75,
-        "weight": 0.52679384,
+        "weight": -0.6214702,
         "enabled": true
       },
       {
         "innovation": 479,
         "input": 53,
         "output": 76,
-        "weight": -0.5820495,
+        "weight": 1.6334574,
         "enabled": false
       },
       {
         "innovation": 480,
         "input": 53,
         "output": 77,
-        "weight": -0.21904889,
+        "weight": -0.054875374,
         "enabled": true
       },
       {
         "innovation": 481,
         "input": 53,
         "output": 78,
-        "weight": 0.4265407,
+        "weight": -0.06113249,
         "enabled": true
       },
       {
         "innovation": 482,
         "input": 53,
         "output": 79,
-        "weight": -0.22817564,
+        "weight": 0.10036917,
         "enabled": true
       },
       {
         "innovation": 483,
         "input": 53,
         "output": 80,
-        "weight": -0.604951,
+        "weight": 2.522656,
         "enabled": true
       },
       {
         "innovation": 484,
         "input": 53,
         "output": 81,
-        "weight": 1.7522751,
+        "weight": 0.658905,
         "enabled": true
       },
       {
         "innovation": 485,
         "input": 53,
         "output": 82,
-        "weight": 0.9753752,
+        "weight": 1.3403417,
         "enabled": true
       },
       {
         "innovation": 486,
         "input": 54,
         "output": 74,
-        "weight": 0.11064027,
+        "weight": -0.9161867,
         "enabled": true
       },
       {
         "innovation": 487,
         "input": 54,
         "output": 75,
-        "weight": 0.35958833,
+        "weight": 1.0052717,
         "enabled": true
       },
       {
         "innovation": 488,
         "input": 54,
         "output": 76,
-        "weight": -0.44260705,
+        "weight": -1.0610911,
         "enabled": true
       },
       {
         "innovation": 489,
         "input": 54,
         "output": 77,
-        "weight": -0.28118256,
+        "weight": 0.13016462,
         "enabled": true
       },
       {
         "innovation": 490,
         "input": 54,
         "output": 78,
-        "weight": 0.4499947,
+        "weight": -0.37012342,
         "enabled": true
       },
       {
         "innovation": 491,
         "input": 54,
         "output": 79,
-        "weight": -0.015022278,
+        "weight": -0.45813495,
         "enabled": true
       },
       {
         "innovation": 492,
         "input": 54,
         "output": 80,
-        "weight": 0.36623874,
+        "weight": -0.28338936,
         "enabled": true
       },
       {
         "innovation": 493,
         "input": 54,
         "output": 81,
-        "weight": 1.0769918,
+        "weight": 0.5933267,
         "enabled": true
       },
       {
         "innovation": 494,
         "input": 54,
         "output": 82,
-        "weight": 0.44527602,
+        "weight": -2.2177937,
         "enabled": true
       },
       {
         "innovation": 495,
         "input": 55,
         "output": 74,
-        "weight": -3.0,
+        "weight": -0.0072990954,
         "enabled": true
       },
       {
         "innovation": 496,
         "input": 55,
         "output": 75,
-        "weight": -0.19543958,
+        "weight": -0.34836188,
         "enabled": true
       },
       {
         "innovation": 497,
         "input": 55,
         "output": 76,
-        "weight": -3.0,
+        "weight": 0.5425421,
         "enabled": true
       },
       {
         "innovation": 498,
         "input": 55,
         "output": 77,
-        "weight": -0.25108403,
+        "weight": 0.4309878,
         "enabled": true
       },
       {
         "innovation": 499,
         "input": 55,
         "output": 78,
-        "weight": 0.27350837,
+        "weight": 0.0452646,
         "enabled": true
       },
       {
         "innovation": 500,
         "input": 55,
         "output": 79,
-        "weight": 0.27821368,
+        "weight": -0.37131318,
         "enabled": true
       },
       {
         "innovation": 501,
         "input": 55,
         "output": 80,
-        "weight": -1.3018405,
+        "weight": -0.7315652,
         "enabled": true
       },
       {
         "innovation": 502,
         "input": 55,
         "output": 81,
-        "weight": -0.10421315,
+        "weight": 0.3257958,
         "enabled": true
       },
       {
         "innovation": 503,
         "input": 55,
         "output": 82,
-        "weight": -0.018250197,
+        "weight": 0.2573297,
         "enabled": true
       },
       {
         "innovation": 504,
         "input": 56,
         "output": 74,
-        "weight": 0.7602396,
+        "weight": 1.183708,
         "enabled": true
       },
       {
         "innovation": 505,
         "input": 56,
         "output": 75,
-        "weight": -0.35227227,
+        "weight": -0.9532188,
         "enabled": true
       },
       {
         "innovation": 506,
         "input": 56,
         "output": 76,
-        "weight": -1.2866184,
+        "weight": 1.4541703,
         "enabled": true
       },
       {
         "innovation": 507,
         "input": 56,
         "output": 77,
-        "weight": 0.004473731,
+        "weight": 1.0584148,
         "enabled": true
       },
       {
         "innovation": 508,
         "input": 56,
         "output": 78,
-        "weight": -1.4315866,
+        "weight": 0.12798063,
         "enabled": true
       },
       {
         "innovation": 509,
         "input": 56,
         "output": 79,
-        "weight": 0.35850778,
+        "weight": 1.3514849,
         "enabled": true
       },
       {
         "innovation": 510,
         "input": 56,
         "output": 80,
-        "weight": 1.4049603,
+        "weight": 0.5004095,
         "enabled": true
       },
       {
         "innovation": 511,
         "input": 56,
         "output": 81,
-        "weight": -0.02549377,
+        "weight": -1.1891395,
         "enabled": true
       },
       {
         "innovation": 512,
         "input": 56,
         "output": 82,
-        "weight": -0.16519308,
+        "weight": -0.6622033,
         "enabled": true
       },
       {
         "innovation": 513,
         "input": 57,
         "output": 74,
-        "weight": 0.6482878,
+        "weight": 0.5347316,
         "enabled": true
       },
       {
         "innovation": 514,
         "input": 57,
         "output": 75,
-        "weight": 1.1349958,
+        "weight": -0.60671073,
         "enabled": true
       },
       {
         "innovation": 515,
         "input": 57,
         "output": 76,
-        "weight": -1.016926,
+        "weight": -0.5505848,
         "enabled": true
       },
       {
         "innovation": 516,
         "input": 57,
         "output": 77,
-        "weight": -0.34901246,
+        "weight": 0.05065307,
         "enabled": true
       },
       {
         "innovation": 517,
         "input": 57,
         "output": 78,
-        "weight": -0.73862267,
+        "weight": -1.705462,
         "enabled": true
       },
       {
         "innovation": 518,
         "input": 57,
         "output": 79,
-        "weight": 0.6225699,
+        "weight": 0.23016162,
         "enabled": true
       },
       {
         "innovation": 519,
         "input": 57,
         "output": 80,
-        "weight": 0.11834335,
+        "weight": 0.46898532,
         "enabled": true
       },
       {
         "innovation": 520,
         "input": 57,
         "output": 81,
-        "weight": 0.7719055,
+        "weight": 1.0699054,
         "enabled": true
       },
       {
         "innovation": 521,
         "input": 57,
         "output": 82,
-        "weight": 0.23137918,
+        "weight": -0.30785707,
         "enabled": true
       },
       {
         "innovation": 522,
         "input": 58,
         "output": 74,
-        "weight": -0.18406186,
+        "weight": 0.36337093,
         "enabled": true
       },
       {
         "innovation": 523,
         "input": 58,
         "output": 75,
-        "weight": 1.0258635,
+        "weight": 0.40738305,
         "enabled": true
       },
       {
         "innovation": 524,
         "input": 58,
         "output": 76,
-        "weight": 0.6340883,
+        "weight": -3.0,
         "enabled": true
       },
       {
         "innovation": 525,
         "input": 58,
         "output": 77,
-        "weight": 0.84596074,
+        "weight": 1.3867828,
         "enabled": false
       },
       {
         "innovation": 526,
         "input": 58,
         "output": 78,
-        "weight": -0.006861314,
-        "enabled": false
+        "weight": -0.25054204,
+        "enabled": true
       },
       {
         "innovation": 527,
         "input": 58,
         "output": 79,
-        "weight": 1.7579901,
+        "weight": 1.7163947,
         "enabled": false
       },
       {
         "innovation": 528,
         "input": 58,
         "output": 80,
-        "weight": -1.1867805,
+        "weight": -1.0169988,
         "enabled": true
       },
       {
         "innovation": 529,
         "input": 58,
         "output": 81,
-        "weight": -0.4916718,
+        "weight": 0.028140098,
         "enabled": true
       },
       {
         "innovation": 530,
         "input": 58,
         "output": 82,
-        "weight": -0.23730865,
+        "weight": 1.017326,
         "enabled": false
       },
       {
         "innovation": 531,
         "input": 59,
         "output": 74,
-        "weight": 0.059032828,
+        "weight": -0.26292855,
         "enabled": true
       },
       {
         "innovation": 532,
         "input": 59,
         "output": 75,
-        "weight": -0.42755672,
+        "weight": -0.2713909,
         "enabled": true
       },
       {
         "innovation": 533,
         "input": 59,
         "output": 76,
-        "weight": 0.55307275,
+        "weight": -0.15947556,
         "enabled": true
       },
       {
         "innovation": 534,
         "input": 59,
         "output": 77,
-        "weight": -0.4258524,
+        "weight": 0.9182374,
         "enabled": true
       },
       {
         "innovation": 535,
         "input": 59,
         "output": 78,
-        "weight": -0.55097485,
+        "weight": -0.31124753,
         "enabled": true
       },
       {
         "innovation": 536,
         "input": 59,
         "output": 79,
-        "weight": 0.3340686,
+        "weight": -1.7199985,
         "enabled": true
       },
       {
         "innovation": 537,
         "input": 59,
         "output": 80,
-        "weight": 0.43303514,
+        "weight": 0.15388045,
         "enabled": true
       },
       {
         "innovation": 538,
         "input": 59,
         "output": 81,
-        "weight": -0.16713744,
+        "weight": 0.9119691,
         "enabled": true
       },
       {
         "innovation": 539,
         "input": 59,
         "output": 82,
-        "weight": -1.3646187,
+        "weight": -0.49363154,
         "enabled": true
       },
       {
         "innovation": 540,
         "input": 60,
         "output": 74,
-        "weight": -0.14640665,
+        "weight": -1.3940268,
         "enabled": true
       },
       {
         "innovation": 541,
         "input": 60,
         "output": 75,
-        "weight": -0.6976495,
+        "weight": -0.35064563,
         "enabled": true
       },
       {
         "innovation": 542,
         "input": 60,
         "output": 76,
-        "weight": 0.6762197,
+        "weight": 0.30671367,
         "enabled": false
       },
       {
         "innovation": 543,
         "input": 60,
         "output": 77,
-        "weight": 0.36194795,
+        "weight": -0.2571706,
         "enabled": true
       },
       {
         "innovation": 544,
         "input": 60,
         "output": 78,
-        "weight": -0.23347685,
+        "weight": 0.3234039,
         "enabled": true
       },
       {
         "innovation": 545,
         "input": 60,
         "output": 79,
-        "weight": 0.8119229,
+        "weight": 0.13586283,
         "enabled": true
       },
       {
         "innovation": 546,
         "input": 60,
         "output": 80,
-        "weight": 2.239303,
+        "weight": 0.85627484,
         "enabled": true
       },
       {
         "innovation": 547,
         "input": 60,
         "output": 81,
-        "weight": 0.5412079,
+        "weight": -1.1922965,
         "enabled": true
       },
       {
         "innovation": 548,
         "input": 60,
         "output": 82,
-        "weight": 0.8877904,
+        "weight": 0.0746488,
         "enabled": true
       },
       {
         "innovation": 549,
         "input": 61,
         "output": 74,
-        "weight": 0.07391837,
+        "weight": 0.30166516,
         "enabled": true
       },
       {
         "innovation": 550,
         "input": 61,
         "output": 75,
-        "weight": 0.25669777,
+        "weight": -0.20164499,
         "enabled": true
       },
       {
         "innovation": 551,
         "input": 61,
         "output": 76,
-        "weight": -0.22820061,
+        "weight": 1.5205858,
         "enabled": true
       },
       {
         "innovation": 552,
         "input": 61,
         "output": 77,
-        "weight": 0.6832968,
+        "weight": -0.29057932,
         "enabled": true
       },
       {
         "innovation": 553,
         "input": 61,
         "output": 78,
-        "weight": -0.20187181,
+        "weight": 0.89557326,
         "enabled": true
       },
       {
         "innovation": 554,
         "input": 61,
         "output": 79,
-        "weight": -1.1363926,
+        "weight": 0.5363948,
         "enabled": true
       },
       {
         "innovation": 555,
         "input": 61,
         "output": 80,
-        "weight": 0.7599871,
+        "weight": 1.2477146,
         "enabled": true
       },
       {
         "innovation": 556,
         "input": 61,
         "output": 81,
-        "weight": -0.63061565,
+        "weight": 1.132719,
         "enabled": true
       },
       {
         "innovation": 557,
         "input": 61,
         "output": 82,
-        "weight": 1.547459,
+        "weight": -0.013935506,
         "enabled": true
       },
       {
         "innovation": 558,
         "input": 62,
         "output": 74,
-        "weight": -0.31604695,
+        "weight": 0.36476445,
         "enabled": true
       },
       {
         "innovation": 559,
         "input": 62,
         "output": 75,
-        "weight": 0.11434196,
+        "weight": -1.7866398,
         "enabled": true
       },
       {
         "innovation": 560,
         "input": 62,
         "output": 76,
-        "weight": -0.9209262,
+        "weight": -0.5118959,
         "enabled": true
       },
       {
         "innovation": 561,
         "input": 62,
         "output": 77,
-        "weight": 1.3376596,
+        "weight": -0.4433993,
         "enabled": true
       },
       {
         "innovation": 562,
         "input": 62,
         "output": 78,
-        "weight": -0.42173764,
+        "weight": -0.03924781,
         "enabled": true
       },
       {
         "innovation": 563,
         "input": 62,
         "output": 79,
-        "weight": 1.034596,
+        "weight": 0.83256936,
         "enabled": true
       },
       {
         "innovation": 564,
         "input": 62,
         "output": 80,
-        "weight": 1.0938998,
+        "weight": 0.10666351,
         "enabled": true
       },
       {
         "innovation": 565,
         "input": 62,
         "output": 81,
-        "weight": 0.13374747,
+        "weight": 0.5743122,
         "enabled": false
       },
       {
         "innovation": 566,
         "input": 62,
         "output": 82,
-        "weight": 0.07884452,
+        "weight": 1.0214745,
         "enabled": true
       },
       {
         "innovation": 567,
         "input": 63,
         "output": 74,
-        "weight": -0.5356134,
+        "weight": 0.6010065,
         "enabled": true
       },
       {
         "innovation": 568,
         "input": 63,
         "output": 75,
-        "weight": -1.0880506,
+        "weight": 1.1368346,
         "enabled": true
       },
       {
         "innovation": 569,
         "input": 63,
         "output": 76,
-        "weight": 0.19055656,
+        "weight": -1.9755101,
         "enabled": true
       },
       {
         "innovation": 570,
         "input": 63,
         "output": 77,
-        "weight": 1.0230731,
+        "weight": -0.10085553,
         "enabled": true
       },
       {
         "innovation": 571,
         "input": 63,
         "output": 78,
-        "weight": -0.8081838,
+        "weight": 0.8890619,
         "enabled": true
       },
       {
         "innovation": 572,
         "input": 63,
         "output": 79,
-        "weight": 1.1526551,
+        "weight": -0.20079032,
         "enabled": true
       },
       {
         "innovation": 573,
         "input": 63,
         "output": 80,
-        "weight": -1.8514833,
+        "weight": 0.79594547,
         "enabled": true
       },
       {
         "innovation": 574,
         "input": 63,
         "output": 81,
-        "weight": 1.1557965,
+        "weight": 0.25452736,
         "enabled": true
       },
       {
         "innovation": 575,
         "input": 63,
         "output": 82,
-        "weight": 1.2705752,
+        "weight": -2.063989,
         "enabled": true
       },
       {
         "innovation": 576,
         "input": 64,
         "output": 74,
-        "weight": 0.107060075,
+        "weight": -0.79642177,
         "enabled": true
       },
       {
         "innovation": 577,
         "input": 64,
         "output": 75,
-        "weight": 0.77157164,
+        "weight": 0.62690127,
         "enabled": true
       },
       {
         "innovation": 578,
         "input": 64,
         "output": 76,
-        "weight": 0.16740873,
+        "weight": 0.13627988,
         "enabled": true
       },
       {
         "innovation": 579,
         "input": 64,
         "output": 77,
-        "weight": -0.29026213,
+        "weight": 0.08305338,
         "enabled": true
       },
       {
         "innovation": 580,
         "input": 64,
         "output": 78,
-        "weight": -0.18050995,
+        "weight": 1.0445629,
         "enabled": true
       },
       {
         "innovation": 581,
         "input": 64,
         "output": 79,
-        "weight": -0.39388633,
+        "weight": -3.0,
         "enabled": true
       },
       {
         "innovation": 582,
         "input": 64,
         "output": 80,
-        "weight": -0.6219181,
+        "weight": -0.060675144,
         "enabled": true
       },
       {
         "innovation": 583,
         "input": 64,
         "output": 81,
-        "weight": 0.29043648,
+        "weight": 0.4574944,
         "enabled": true
       },
       {
         "innovation": 584,
         "input": 64,
         "output": 82,
-        "weight": 0.7607945,
+        "weight": -0.64673233,
         "enabled": true
       },
       {
         "innovation": 585,
         "input": 65,
         "output": 74,
-        "weight": 0.17708313,
+        "weight": -0.5159801,
         "enabled": true
       },
       {
         "innovation": 586,
         "input": 65,
         "output": 75,
-        "weight": -0.37984157,
+        "weight": -0.22607347,
         "enabled": true
       },
       {
         "innovation": 587,
         "input": 65,
         "output": 76,
-        "weight": 0.3134468,
+        "weight": 0.057127237,
         "enabled": true
       },
       {
         "innovation": 588,
         "input": 65,
         "output": 77,
-        "weight": -0.29080287,
+        "weight": 0.4451439,
         "enabled": true
       },
       {
         "innovation": 589,
         "input": 65,
         "output": 78,
-        "weight": 0.8549043,
+        "weight": 0.6044454,
         "enabled": true
       },
       {
         "innovation": 590,
         "input": 65,
         "output": 79,
-        "weight": 0.9532064,
+        "weight": 2.2013502,
         "enabled": true
       },
       {
         "innovation": 591,
         "input": 65,
         "output": 80,
-        "weight": -1.770638,
+        "weight": -0.29743207,
         "enabled": true
       },
       {
         "innovation": 592,
         "input": 65,
         "output": 81,
-        "weight": 0.02104804,
+        "weight": 0.56111366,
         "enabled": true
       },
       {
         "innovation": 593,
         "input": 65,
         "output": 82,
-        "weight": -0.024962425,
+        "weight": 0.8620121,
         "enabled": true
       },
       {
         "innovation": 594,
         "input": 66,
         "output": 74,
-        "weight": -0.5321251,
+        "weight": 0.5160053,
         "enabled": true
       },
       {
         "innovation": 595,
         "input": 66,
         "output": 75,
-        "weight": -0.4176748,
+        "weight": -0.45488927,
         "enabled": false
       },
       {
         "innovation": 596,
         "input": 66,
         "output": 76,
-        "weight": 1.2853427,
+        "weight": 0.79512966,
         "enabled": true
       },
       {
         "innovation": 597,
         "input": 66,
         "output": 77,
-        "weight": 2.5677874,
+        "weight": -0.83495605,
         "enabled": true
       },
       {
         "innovation": 598,
         "input": 66,
         "output": 78,
-        "weight": -0.46346578,
+        "weight": -0.55562615,
         "enabled": true
       },
       {
         "innovation": 599,
         "input": 66,
         "output": 79,
-        "weight": 2.6154478,
+        "weight": 1.1478813,
         "enabled": true
       },
       {
         "innovation": 600,
         "input": 66,
         "output": 80,
-        "weight": -0.75743866,
+        "weight": -1.0964826,
         "enabled": true
       },
       {
         "innovation": 601,
         "input": 66,
         "output": 81,
-        "weight": 0.9673481,
+        "weight": 0.22111368,
         "enabled": true
       },
       {
         "innovation": 602,
         "input": 66,
         "output": 82,
-        "weight": -0.7425264,
+        "weight": 0.73998266,
         "enabled": true
       },
       {
         "innovation": 603,
         "input": 67,
         "output": 74,
-        "weight": 0.7638227,
+        "weight": -0.31617883,
         "enabled": true
       },
       {
         "innovation": 604,
         "input": 67,
         "output": 75,
-        "weight": -0.104237705,
+        "weight": -2.2189777,
         "enabled": true
       },
       {
         "innovation": 605,
         "input": 67,
         "output": 76,
-        "weight": 0.41868153,
+        "weight": 0.17150196,
         "enabled": true
       },
       {
         "innovation": 606,
         "input": 67,
         "output": 77,
-        "weight": 0.24968985,
+        "weight": -0.95015466,
         "enabled": true
       },
       {
         "innovation": 607,
         "input": 67,
         "output": 78,
-        "weight": -0.0042955875,
+        "weight": -1.9612092,
         "enabled": true
       },
       {
         "innovation": 608,
         "input": 67,
         "output": 79,
-        "weight": -0.67400384,
+        "weight": -0.51605076,
         "enabled": true
       },
       {
         "innovation": 609,
         "input": 67,
         "output": 80,
-        "weight": 1.0221866,
+        "weight": -2.4237998,
         "enabled": true
       },
       {
         "innovation": 610,
         "input": 67,
         "output": 81,
-        "weight": -0.6781306,
+        "weight": -0.47233972,
         "enabled": true
       },
       {
         "innovation": 611,
         "input": 67,
         "output": 82,
-        "weight": 1.1782955,
+        "weight": -0.39263943,
         "enabled": true
       },
       {
         "innovation": 612,
         "input": 68,
         "output": 74,
-        "weight": 0.34500766,
+        "weight": 1.1711512,
         "enabled": false
       },
       {
         "innovation": 613,
         "input": 68,
         "output": 75,
-        "weight": 0.15884042,
+        "weight": 0.25910982,
         "enabled": true
       },
       {
         "innovation": 614,
         "input": 68,
         "output": 76,
-        "weight": 0.2286005,
+        "weight": -0.1637216,
         "enabled": true
       },
       {
         "innovation": 615,
         "input": 68,
         "output": 77,
-        "weight": 0.94817936,
+        "weight": 0.10095668,
         "enabled": true
       },
       {
         "innovation": 616,
         "input": 68,
         "output": 78,
-        "weight": -1.3922797,
+        "weight": -0.8930745,
         "enabled": true
       },
       {
         "innovation": 617,
         "input": 68,
         "output": 79,
-        "weight": 0.4455707,
+        "weight": 0.18705252,
         "enabled": true
       },
       {
         "innovation": 618,
         "input": 68,
         "output": 80,
-        "weight": -0.47435415,
+        "weight": 0.5608421,
         "enabled": true
       },
       {
         "innovation": 619,
         "input": 68,
         "output": 81,
-        "weight": 0.4007545,
+        "weight": 0.5294045,
         "enabled": true
       },
       {
         "innovation": 620,
         "input": 68,
         "output": 82,
-        "weight": -0.84701204,
+        "weight": -0.31178993,
         "enabled": true
       },
       {
         "innovation": 621,
         "input": 69,
         "output": 74,
-        "weight": -1.0758604,
+        "weight": -0.7085943,
         "enabled": true
       },
       {
         "innovation": 622,
         "input": 69,
         "output": 75,
-        "weight": 0.12319288,
+        "weight": -0.21564852,
         "enabled": true
       },
       {
         "innovation": 623,
         "input": 69,
         "output": 76,
-        "weight": -0.7588049,
+        "weight": 0.9379685,
         "enabled": true
       },
       {
         "innovation": 624,
         "input": 69,
         "output": 77,
-        "weight": -0.08213124,
+        "weight": -0.7206969,
         "enabled": true
       },
       {
         "innovation": 625,
         "input": 69,
         "output": 78,
-        "weight": 0.13196272,
+        "weight": -0.5458549,
         "enabled": true
       },
       {
         "innovation": 626,
         "input": 69,
         "output": 79,
-        "weight": 0.7146627,
+        "weight": -0.16849956,
         "enabled": true
       },
       {
         "innovation": 627,
         "input": 69,
         "output": 80,
-        "weight": -0.48029804,
+        "weight": 0.38603306,
         "enabled": true
       },
       {
         "innovation": 628,
         "input": 69,
         "output": 81,
-        "weight": -0.9757993,
+        "weight": 0.53134227,
         "enabled": true
       },
       {
         "innovation": 629,
         "input": 69,
         "output": 82,
-        "weight": -0.9065783,
+        "weight": 1.1907674,
         "enabled": true
       },
       {
         "innovation": 630,
         "input": 70,
         "output": 74,
-        "weight": 0.57198524,
+        "weight": 0.6338449,
         "enabled": true
       },
       {
         "innovation": 631,
         "input": 70,
         "output": 75,
-        "weight": 0.9225285,
+        "weight": -0.80028605,
         "enabled": true
       },
       {
         "innovation": 632,
         "input": 70,
         "output": 76,
-        "weight": -1.1332166,
+        "weight": 0.24235389,
         "enabled": true
       },
       {
         "innovation": 633,
         "input": 70,
         "output": 77,
-        "weight": -0.110200256,
+        "weight": 0.41837683,
         "enabled": true
       },
       {
         "innovation": 634,
         "input": 70,
         "output": 78,
-        "weight": -1.3160148,
+        "weight": 1.1411569,
         "enabled": false
       },
       {
         "innovation": 635,
         "input": 70,
         "output": 79,
-        "weight": 0.11754644,
+        "weight": 0.48080462,
         "enabled": true
       },
       {
         "innovation": 636,
         "input": 70,
         "output": 80,
-        "weight": -0.28527576,
+        "weight": -0.28858873,
         "enabled": true
       },
       {
         "innovation": 637,
         "input": 70,
         "output": 81,
-        "weight": -0.62111104,
+        "weight": -0.16990235,
         "enabled": true
       },
       {
         "innovation": 638,
         "input": 70,
         "output": 82,
-        "weight": -0.18175098,
+        "weight": 0.0070533454,
         "enabled": true
       },
       {
         "innovation": 639,
         "input": 71,
         "output": 74,
-        "weight": -0.22617814,
+        "weight": -0.8866738,
         "enabled": true
       },
       {
         "innovation": 640,
         "input": 71,
         "output": 75,
-        "weight": -0.3349497,
+        "weight": 1.27347,
         "enabled": true
       },
       {
         "innovation": 641,
         "input": 71,
         "output": 76,
-        "weight": 1.0392165,
+        "weight": 0.24074173,
         "enabled": true
       },
       {
         "innovation": 642,
         "input": 71,
         "output": 77,
-        "weight": 0.7463815,
+        "weight": -0.97462523,
         "enabled": true
       },
       {
         "innovation": 643,
         "input": 71,
         "output": 78,
-        "weight": -1.133355,
+        "weight": -0.19507077,
         "enabled": true
       },
       {
         "innovation": 644,
         "input": 71,
         "output": 79,
-        "weight": 0.33605918,
+        "weight": 0.005359292,
         "enabled": true
       },
       {
         "innovation": 645,
         "input": 71,
         "output": 80,
-        "weight": 0.62212676,
+        "weight": -0.7001343,
         "enabled": true
       },
       {
         "innovation": 646,
         "input": 71,
         "output": 81,
-        "weight": -0.08083674,
+        "weight": 0.72360104,
         "enabled": true
       },
       {
         "innovation": 647,
         "input": 71,
         "output": 82,
-        "weight": -1.5247338,
+        "weight": -0.13815975,
         "enabled": true
       },
       {
         "innovation": 648,
         "input": 72,
         "output": 74,
-        "weight": 0.0011066496,
+        "weight": -0.8951868,
         "enabled": true
       },
       {
         "innovation": 649,
         "input": 72,
         "output": 75,
-        "weight": -1.5684848,
+        "weight": 0.6108862,
         "enabled": true
       },
       {
         "innovation": 650,
         "input": 72,
         "output": 76,
-        "weight": -1.3550154,
+        "weight": -0.9463211,
         "enabled": true
       },
       {
         "innovation": 651,
         "input": 72,
         "output": 77,
-        "weight": 0.88228285,
+        "weight": -0.55016434,
         "enabled": true
       },
       {
         "innovation": 652,
         "input": 72,
         "output": 78,
-        "weight": 2.6444094,
+        "weight": 2.5967705,
         "enabled": true
       },
       {
         "innovation": 653,
         "input": 72,
         "output": 79,
-        "weight": -1.0067179,
+        "weight": 1.2298465,
         "enabled": true
       },
       {
         "innovation": 654,
         "input": 72,
         "output": 80,
-        "weight": 0.33883762,
+        "weight": -0.2501442,
         "enabled": true
       },
       {
         "innovation": 655,
         "input": 72,
         "output": 81,
-        "weight": 0.5259645,
+        "weight": 0.5336476,
         "enabled": true
       },
       {
         "innovation": 656,
         "input": 72,
         "output": 82,
-        "weight": -0.016561612,
+        "weight": -0.46429875,
         "enabled": true
       },
       {
         "innovation": 657,
         "input": 73,
         "output": 74,
-        "weight": 0.18586984,
+        "weight": -0.30109584,
         "enabled": true
       },
       {
         "innovation": 658,
         "input": 73,
         "output": 75,
-        "weight": 0.67039204,
+        "weight": 0.82571536,
         "enabled": true
       },
       {
         "innovation": 659,
         "input": 73,
         "output": 76,
-        "weight": -0.75614655,
+        "weight": -0.7959819,
         "enabled": true
       },
       {
         "innovation": 660,
         "input": 73,
         "output": 77,
-        "weight": -0.34449172,
+        "weight": -0.39490494,
         "enabled": true
       },
       {
         "innovation": 661,
         "input": 73,
         "output": 78,
-        "weight": -0.03334415,
+        "weight": -0.6469903,
         "enabled": true
       },
       {
         "innovation": 662,
         "input": 73,
         "output": 79,
-        "weight": -0.9851924,
+        "weight": -1.2030187,
         "enabled": true
       },
       {
         "innovation": 663,
         "input": 73,
         "output": 80,
-        "weight": 2.719132,
+        "weight": 2.6277041,
         "enabled": true
       },
       {
         "innovation": 664,
         "input": 73,
         "output": 81,
-        "weight": -0.16677183,
+        "weight": -1.3678051,
         "enabled": true
       },
       {
         "innovation": 665,
         "input": 73,
         "output": 82,
-        "weight": -0.02118361,
+        "weight": -0.4857564,
         "enabled": true
       },
       {
         "innovation": 1117,
         "input": 64,
         "output": 111,
-        "weight": -1.250357,
+        "weight": -1.03963,
         "enabled": true
       },
       {
         "innovation": 1390,
         "input": 32,
         "output": 315,
-        "weight": -0.403686,
+        "weight": 1.3773922,
         "enabled": true
       },
       {
         "innovation": 1391,
         "input": 315,
         "output": 81,
-        "weight": -0.18985915,
+        "weight": -0.5624504,
         "enabled": true
       },
       {
         "innovation": 1891,
         "input": 5,
         "output": 145,
-        "weight": 0.36483967,
+        "weight": 0.82878256,
         "enabled": true
       },
       {
         "innovation": 1892,
         "input": 4,
         "output": 433,
-        "weight": 0.43074486,
+        "weight": 0.0113990605,
         "enabled": true
       },
       {
         "innovation": 1893,
         "input": 433,
         "output": 77,
-        "weight": -0.33976528,
+        "weight": -1.1235213,
         "enabled": true
       },
       {
         "innovation": 1924,
         "input": 153,
         "output": 77,
-        "weight": -0.6304474,
+        "weight": 0.3896106,
         "enabled": true
       },
       {
         "innovation": 1925,
         "input": 18,
         "output": 440,
-        "weight": -0.6450782,
+        "weight": -0.9210379,
         "enabled": true
       },
       {
         "innovation": 1926,
         "input": 440,
         "output": 80,
-        "weight": 0.63028526,
+        "weight": -0.82679784,
         "enabled": true
       },
       {
         "innovation": 2189,
         "input": 36,
         "output": 510,
-        "weight": -0.13873982,
+        "weight": 1.5843374,
         "enabled": true
       },
       {
         "innovation": 2190,
         "input": 510,
         "output": 81,
-        "weight": -0.6058141,
+        "weight": -0.20966464,
         "enabled": true
       },
       {
         "innovation": 3287,
         "input": 784,
         "output": 77,
-        "weight": -0.7821518,
+        "weight": -0.0888083,
         "enabled": true
       },
       {
         "innovation": 9849,
         "input": 7,
         "output": 816,
-        "weight": 0.8954693,
+        "weight": -0.91437864,
         "enabled": true
       },
       {
         "innovation": 9918,
         "input": 37,
         "output": 361,
-        "weight": -0.006860316,
+        "weight": 0.2204234,
         "enabled": true
       },
       {
         "innovation": 10243,
         "input": 17,
         "output": 2044,
-        "weight": -1.3981285,
+        "weight": 0.8121339,
         "enabled": true
       },
       {
         "innovation": 10870,
         "input": 47,
         "output": 367,
-        "weight": 0.5507165,
+        "weight": 0.28541854,
         "enabled": true
       },
       {
         "innovation": 11114,
         "input": 22,
         "output": 2606,
-        "weight": -0.25511265,
+        "weight": 0.66412216,
         "enabled": true
       },
       {
         "innovation": 11115,
         "input": 2606,
         "output": 82,
-        "weight": 0.30171075,
+        "weight": -0.896435,
         "enabled": true
       },
       {
         "innovation": 11398,
         "input": 28,
         "output": 2319,
-        "weight": -0.23599467,
+        "weight": -2.0117538,
         "enabled": true
       },
       {
         "innovation": 11966,
         "input": 995,
         "output": 1928,
-        "weight": -0.81043947,
+        "weight": -1.2785089,
         "enabled": true
       },
       {
         "innovation": 12409,
         "input": 71,
         "output": 2432,
-        "weight": -0.9239565,
+        "weight": -0.13757354,
         "enabled": true
       },
       {
         "innovation": 13185,
         "input": 2605,
         "output": 2041,
-        "weight": -0.41692367,
+        "weight": 0.15057746,
         "enabled": true
       },
       {
         "innovation": 13484,
         "input": 28,
         "output": 837,
-        "weight": -1.9726632,
+        "weight": -0.33085436,
         "enabled": true
       },
       {
         "innovation": 15534,
         "input": 21,
         "output": 3654,
-        "weight": -0.40630984,
+        "weight": -0.5113354,
         "enabled": true
       },
       {
         "innovation": 15535,
         "input": 3654,
         "output": 81,
-        "weight": -1.6213773,
+        "weight": 0.035449117,
         "enabled": true
       },
       {
         "innovation": 15895,
         "input": 2716,
         "output": 78,
-        "weight": -0.97363675,
+        "weight": 0.37513894,
         "enabled": true
       },
       {
         "innovation": 16113,
         "input": 56,
         "output": 3041,
-        "weight": 0.7009126,
+        "weight": 0.7822342,
         "enabled": true
       },
       {
         "innovation": 16114,
         "input": 45,
         "output": 3799,
-        "weight": -0.6322727,
+        "weight": 0.8268759,
         "enabled": true
       },
       {
         "innovation": 16115,
         "input": 3799,
         "output": 76,
-        "weight": 0.21052507,
+        "weight": 0.8398448,
         "enabled": true
       },
       {
         "innovation": 16373,
         "input": 510,
         "output": 3856,
-        "weight": -0.24086991,
+        "weight": 0.6398892,
         "enabled": true
       },
       {
         "innovation": 16374,
         "input": 3856,
         "output": 81,
-        "weight": 1.0917436,
+        "weight": -0.09866831,
         "enabled": true
       },
       {
         "innovation": 16696,
         "input": 3652,
         "output": 3335,
-        "weight": 0.5793024,
+        "weight": 0.74196315,
         "enabled": true
       },
       {
         "innovation": 17612,
         "input": 3652,
         "output": 182,
-        "weight": 0.67471397,
+        "weight": 1.3781457,
         "enabled": true
       },
       {
         "innovation": 19919,
         "input": 29,
         "output": 2085,
-        "weight": 0.6912082,
+        "weight": -0.022287995,
         "enabled": true
       },
       {
         "innovation": 20060,
         "input": 25,
         "output": 4718,
-        "weight": 0.5691236,
+        "weight": 0.86553764,
         "enabled": true
       },
       {
         "innovation": 20061,
         "input": 4718,
         "output": 79,
-        "weight": -0.2894813,
+        "weight": 0.15219438,
         "enabled": true
       },
       {
         "innovation": 27625,
         "input": 21,
         "output": 6486,
-        "weight": 0.837672,
+        "weight": 1.6254622,
         "enabled": true
       },
       {
         "innovation": 27626,
         "input": 6486,
         "output": 3654,
-        "weight": -0.9593631,
+        "weight": -0.5991112,
         "enabled": true
       },
       {
         "innovation": 28005,
         "input": 55,
         "output": 6580,
-        "weight": -2.385842,
+        "weight": 0.39742962,
         "enabled": true
       },
       {
         "innovation": 28006,
         "input": 6580,
         "output": 80,
-        "weight": 1.150044,
+        "weight": 0.28434473,
         "enabled": true
       },
       {
         "innovation": 28243,
         "input": 6486,
         "output": 2150,
-        "weight": 0.38206375,
+        "weight": -0.89087594,
         "enabled": true
       },
       {
         "innovation": 28274,
         "input": 28,
         "output": 6642,
-        "weight": -0.20210874,
+        "weight": -0.52598166,
         "enabled": true
       },
       {
         "innovation": 28275,
         "input": 6642,
         "output": 79,
-        "weight": 0.58716595,
+        "weight": 0.9918988,
         "enabled": true
       },
       {
         "innovation": 28875,
         "input": 3594,
         "output": 3888,
-        "weight": -1.0848428,
+        "weight": -0.70405185,
         "enabled": true
       },
       {
         "innovation": 28907,
         "input": 4567,
         "output": 4101,
-        "weight": -0.4915278,
+        "weight": 0.97549784,
         "enabled": true
       },
       {
         "innovation": 29169,
         "input": 13,
         "output": 1312,
-        "weight": -0.64220715,
+        "weight": 0.11145437,
         "enabled": true
       },
       {
         "innovation": 29193,
         "input": 7,
         "output": 2552,
-        "weight": -0.6112546,
+        "weight": 2.4402742,
         "enabled": true
       },
       {
         "innovation": 29502,
         "input": 40,
         "output": 6929,
-        "weight": -0.40151182,
+        "weight": -1.0279276,
         "enabled": true
       },
       {
         "innovation": 29503,
         "input": 6929,
         "output": 77,
-        "weight": -0.6926074,
+        "weight": -0.7572381,
         "enabled": true
       },
       {
         "innovation": 29733,
         "input": 1579,
         "output": 6680,
-        "weight": -0.6180306,
+        "weight": -0.1855714,
         "enabled": true
       },
       {
         "innovation": 30136,
         "input": 3803,
         "output": 6451,
-        "weight": -1.7373621,
+        "weight": -0.61236894,
         "enabled": true
       },
       {
         "innovation": 31169,
         "input": 58,
         "output": 7339,
-        "weight": -0.87448573,
+        "weight": 0.7146684,
         "enabled": true
       },
       {
         "innovation": 31170,
         "input": 7339,
         "output": 78,
-        "weight": -0.39582318,
+        "weight": -0.13518849,
         "enabled": true
       },
       {
         "innovation": 32422,
         "input": 4,
         "output": 7618,
-        "weight": 1.1944977,
+        "weight": -0.58238804,
         "enabled": true
       },
       {
         "innovation": 32423,
         "input": 7618,
         "output": 75,
-        "weight": 0.63222206,
+        "weight": -0.3488798,
         "enabled": true
       },
       {
         "innovation": 33152,
         "input": 56,
         "output": 5660,
-        "weight": 0.40872267,
+        "weight": -0.52283156,
         "enabled": true
       },
       {
         "innovation": 33226,
         "input": 4,
         "output": 2303,
-        "weight": 0.8159816,
-        "enabled": true
-      },
-      {
-        "innovation": 34324,
-        "input": 56,
-        "output": 8050,
-        "weight": -0.66353,
-        "enabled": true
-      },
-      {
-        "innovation": 34325,
-        "input": 8050,
-        "output": 77,
-        "weight": -0.6547862,
-        "enabled": true
-      },
-      {
-        "innovation": 34570,
-        "input": 31,
-        "output": 8110,
-        "weight": -0.31556657,
-        "enabled": true
-      },
-      {
-        "innovation": 34571,
-        "input": 8110,
-        "output": 76,
-        "weight": 0.202025,
-        "enabled": true
-      },
-      {
-        "innovation": 34870,
-        "input": 7005,
-        "output": 74,
-        "weight": 0.67084366,
-        "enabled": true
-      },
-      {
-        "innovation": 35303,
-        "input": 6338,
-        "output": 4665,
-        "weight": 0.36893106,
+        "weight": -0.92880476,
         "enabled": true
       }
     ],
-    "fitness": 2186.2266
+    "fitness": 2138.4575
   }
 }
