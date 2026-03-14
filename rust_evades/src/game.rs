@@ -328,8 +328,9 @@ impl GameState {
         let wall_enemy_count = self.config.wall_enemy_pairs_per_wall * 4;
         let mut enemies = Vec::with_capacity(self.config.enemy_count + wall_enemy_count);
         enemies.extend(self.spawn_wall_enemies());
-        let start_safe_x = self.config.start_margin + 220.0;
+        let min_x = 0.0;
         let end_safe_x = self.config.goal_x() - 180.0;
+        let player_spawn_clearance = self.config.player_radius * 2.0;
 
         for _ in 0..self.config.enemy_count {
             let radius = self
@@ -338,7 +339,7 @@ impl GameState {
             let mut spawned = None;
 
             for _ in 0..500 {
-                let x = self.rng.gen_range(start_safe_x..end_safe_x);
+                let x = self.rng.gen_range(min_x + radius..end_safe_x);
                 let y = self.rng.gen_range(
                     self.config.corridor_top + radius..self.config.corridor_bottom - radius,
                 );
@@ -357,12 +358,17 @@ impl GameState {
                     },
                 };
 
-                if enemies.iter().all(|other: &Enemy| {
+                let far_enough_from_player = self.player.body.distance_squared_to(&candidate.body)
+                    > (candidate.body.radius + player_spawn_clearance)
+                        * (candidate.body.radius + player_spawn_clearance);
+                let clear_of_other_enemies = enemies.iter().all(|other: &Enemy| {
                     let dx = candidate.body.pos.x - other.body.pos.x;
                     let dy = candidate.body.pos.y - other.body.pos.y;
                     let min_gap = candidate.body.radius + other.body.radius + 28.0;
                     dx * dx + dy * dy > min_gap * min_gap
-                }) {
+                });
+
+                if far_enough_from_player && clear_of_other_enemies {
                     spawned = Some(candidate);
                     break;
                 }
@@ -371,7 +377,10 @@ impl GameState {
             let enemy = spawned.unwrap_or_else(|| Enemy {
                 body: CircleBody {
                     pos: Vec2 {
-                        x: self.rng.gen_range(start_safe_x..end_safe_x),
+                        x: self
+                            .rng
+                            .gen_range(min_x + radius..end_safe_x)
+                            .max(self.player.body.radius + radius + player_spawn_clearance),
                         y: self.rng.gen_range(
                             self.config.corridor_top + radius..self.config.corridor_bottom - radius,
                         ),
@@ -613,5 +622,20 @@ mod tests {
             })
             .count();
         assert_eq!(wall_enemy_total, config.wall_enemy_pairs_per_wall * 4);
+    }
+
+    #[test]
+    fn random_enemies_do_not_spawn_within_one_player_radius_gap() {
+        let config = GameConfig::default();
+        let state = GameState::new(config.clone(), Some(1));
+        let min_center_distance = config.player_radius * 2.0;
+
+        for enemy in state.enemies.iter().filter(|enemy| {
+            enemy.body.radius != config.wall_enemy_radius || enemy.body.vel.y != 0.0
+        }) {
+            let actual = state.player.body.distance_squared_to(&enemy.body).sqrt();
+            let required = enemy.body.radius + min_center_distance;
+            assert!(actual > required);
+        }
     }
 }
