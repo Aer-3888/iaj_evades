@@ -12,6 +12,7 @@ pub struct SavedModel {
     pub output_size: usize,
     pub ray_count: usize,
     pub training_seeds: Vec<u64>,
+    pub random_seeds_per_generation: usize,
     pub generations_completed: usize,
     pub best_metrics: EvaluationSummary,
     pub genome: Genome,
@@ -20,6 +21,7 @@ pub struct SavedModel {
 impl SavedModel {
     pub fn new(
         training_seeds: Vec<u64>,
+        random_seeds_per_generation: usize,
         generations_completed: usize,
         best_metrics: EvaluationSummary,
         genome: Genome,
@@ -30,6 +32,7 @@ impl SavedModel {
             output_size: 9,
             ray_count: RAY_COUNT,
             training_seeds,
+            random_seeds_per_generation,
             generations_completed,
             best_metrics,
             genome,

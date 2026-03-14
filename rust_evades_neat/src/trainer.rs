@@ -23,7 +23,8 @@ pub struct TrainingConfig {
     pub generations: usize,
     pub trainer_seed: u64,
     pub checkpoint_every: usize,
-    pub evaluation_seeds: Vec<u64>,
+    pub fixed_evaluation_seeds: Vec<u64>,
+    pub random_seed_count_per_generation: usize,
     pub mutation: MutationConfig,
 }
 
@@ -34,7 +35,8 @@ impl Default for TrainingConfig {
             generations: 1500,
             trainer_seed: 7,
             checkpoint_every: 25,
-            evaluation_seeds: default_training_seeds(2, 40),
+            fixed_evaluation_seeds: default_training_seeds(2, 24),
+            random_seed_count_per_generation: 4,
             mutation: MutationConfig::default(),
         }
     }
@@ -65,7 +67,12 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
     let mut best_metrics = EvaluationSummary::default();
 
     for generation in 0..config.generations {
-        let summaries = evaluate_population(&population, &config.evaluation_seeds);
+        let generation_seeds = generation_evaluation_seeds(
+            &config.fixed_evaluation_seeds,
+            config.random_seed_count_per_generation,
+            &mut rng,
+        );
+        let summaries = evaluate_population(&population, &generation_seeds);
         for (genome, summary) in population.iter_mut().zip(summaries.iter()) {
             genome.fitness = summary.fitness;
         }
@@ -86,7 +93,8 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
             save_model(
                 output_dir.join("best_model.json"),
                 SavedModel::new(
-                    config.evaluation_seeds.clone(),
+                    config.fixed_evaluation_seeds.clone(),
+                    config.random_seed_count_per_generation,
                     generation + 1,
                     best_metrics,
                     best_genome.clone(),
@@ -102,7 +110,7 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
             average_fitness,
             summaries[best_index].average_progress,
             summaries[best_index].wins,
-            config.evaluation_seeds.len(),
+            generation_seeds.len(),
             population[best_index].nodes.len(),
             population[best_index].connections.len(),
         );
@@ -111,7 +119,8 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
             save_model(
                 output_dir.join(format!("checkpoint_gen_{:04}.json", generation + 1)),
                 SavedModel::new(
-                    config.evaluation_seeds.clone(),
+                    config.fixed_evaluation_seeds.clone(),
+                    config.random_seed_count_per_generation,
                     generation + 1,
                     best_metrics,
                     best_genome.clone(),
@@ -136,7 +145,8 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
     save_model(
         output_dir.join("final_model.json"),
         SavedModel::new(
-            config.evaluation_seeds.clone(),
+            config.fixed_evaluation_seeds.clone(),
+            config.random_seed_count_per_generation,
             config.generations,
             best_metrics,
             best_genome.clone(),
@@ -148,6 +158,21 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         best_metrics,
         completed_generations: config.generations,
     })
+}
+
+fn generation_evaluation_seeds(
+    fixed_seeds: &[u64],
+    random_count: usize,
+    rng: &mut impl Rng,
+) -> Vec<u64> {
+    let mut seeds = fixed_seeds.to_vec();
+    while seeds.len() < fixed_seeds.len() + random_count {
+        let candidate = rng.gen::<u64>();
+        if !seeds.contains(&candidate) {
+            seeds.push(candidate);
+        }
+    }
+    seeds
 }
 
 pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSummary {
@@ -203,14 +228,7 @@ fn evaluate_network(network: &CompiledNetwork, seeds: &[u64]) -> EvaluationSumma
             wins += 1;
         }
 
-        let seed_fitness = rightward_reward * 2.5
-            + report.best_progress * 4.0
-            + if report.done_reason == DoneReason::Goal {
-                2500.0
-            } else {
-                0.0
-            }
-            - report.elapsed_time * 2.0;
+        let seed_fitness = report.elapsed_time;
         total_fitness += seed_fitness;
         total_progress += report.best_progress;
         total_rightward_reward += rightward_reward;
@@ -377,10 +395,10 @@ mod tests {
 
     #[test]
     fn default_seed_schedule_matches_requested_range() {
-        let seeds = default_training_seeds(2, 40);
-        assert_eq!(seeds.len(), 40);
+        let seeds = default_training_seeds(2, 24);
+        assert_eq!(seeds.len(), 24);
         assert_eq!(seeds[0], 2);
-        assert_eq!(seeds[39], 41);
+        assert_eq!(seeds[23], 25);
     }
 
     #[test]
@@ -390,21 +408,32 @@ mod tests {
             generations: 1,
             trainer_seed: 3,
             checkpoint_every: 1,
-            evaluation_seeds: default_training_seeds(2, 4),
+            fixed_evaluation_seeds: default_training_seeds(2, 4),
+            random_seed_count_per_generation: 0,
             mutation: MutationConfig::default(),
         };
         let mut rng = ChaCha8Rng::seed_from_u64(config.trainer_seed);
         let mut tracker = InnovationTracker::new(INPUT_SIZE, Action::ALL.len());
         let genome = tracker.initial_genome(&mut rng);
         let model = SavedModel::new(
-            config.evaluation_seeds.clone(),
+            config.fixed_evaluation_seeds.clone(),
+            config.random_seed_count_per_generation,
             1,
             EvaluationSummary::default(),
             genome,
         );
-        let left = evaluate_saved_model(&model, &config.evaluation_seeds);
-        let right = evaluate_saved_model(&model, &config.evaluation_seeds);
+        let left = evaluate_saved_model(&model, &config.fixed_evaluation_seeds);
+        let right = evaluate_saved_model(&model, &config.fixed_evaluation_seeds);
         assert_eq!(left.fitness, right.fitness);
         assert_eq!(left.average_progress, right.average_progress);
+    }
+
+    #[test]
+    fn generation_seed_schedule_keeps_fixed_and_adds_random() {
+        let fixed = default_training_seeds(2, 24);
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        let seeds = generation_evaluation_seeds(&fixed, 4, &mut rng);
+        assert_eq!(seeds.len(), 28);
+        assert_eq!(&seeds[..24], fixed.as_slice());
     }
 }

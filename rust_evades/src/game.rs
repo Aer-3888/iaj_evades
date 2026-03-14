@@ -263,7 +263,7 @@ impl GameState {
 
         let mut reward = (self.best_x - previous_best) * 0.02;
 
-        if self.collided() {
+        if self.touched_wall() || self.collided() {
             self.done = true;
             self.done_reason = DoneReason::Collision;
             self.total_deaths += 1;
@@ -481,6 +481,13 @@ impl GameState {
             self.player.body.distance_squared_to(&enemy.body) <= sum * sum
         })
     }
+
+    fn touched_wall(&self) -> bool {
+        self.player.body.pos.x - self.player.body.radius <= 0.0
+            || self.player.body.pos.x + self.player.body.radius >= self.config.world_width
+            || self.player.body.pos.y - self.player.body.radius <= self.config.corridor_top
+            || self.player.body.pos.y + self.player.body.radius >= self.config.corridor_bottom
+    }
 }
 
 pub fn reflect_axis(
@@ -637,5 +644,17 @@ mod tests {
             let required = enemy.body.radius + min_center_distance;
             assert!(actual > required);
         }
+    }
+
+    #[test]
+    fn touching_top_wall_finishes_episode() {
+        let mut state = GameState::new(GameConfig::default(), Some(1));
+        state.enemies.clear();
+        state.player.body.pos.y = state.config.corridor_top + state.player.body.radius + 1.0;
+
+        let result = state.step(Action::Up, Some(state.config.fixed_timestep));
+
+        assert!(result.done);
+        assert_eq!(result.done_reason, DoneReason::Collision);
     }
 }
