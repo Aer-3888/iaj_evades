@@ -1,0 +1,12 @@
+[package]
+name = "rust_evades"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+font8x8 = "0.3"
+minifb = "0.27"
+rand = "0.8"
+rand_chacha = "0.3"
