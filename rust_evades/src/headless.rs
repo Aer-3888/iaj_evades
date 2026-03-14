@@ -1,7 +1,7 @@
 use crate::{
     config::GameConfig,
     game::{Action, EpisodeReport, GameState},
-    neat_player::ModelController,
+    model_player::ModelController,
 };
 
 #[derive(Clone, Copy, Debug)]

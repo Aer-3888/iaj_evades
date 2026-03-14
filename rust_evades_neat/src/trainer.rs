@@ -36,7 +36,7 @@ impl Default for TrainingConfig {
             trainer_seed: 7,
             checkpoint_every: 25,
             fixed_evaluation_seeds: default_training_seeds(2, 24),
-            random_seed_count_per_generation: 4,
+            random_seed_count_per_generation: 2,
             mutation: MutationConfig::default(),
         }
     }
@@ -62,6 +62,7 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
     let mut population = (0..config.population_size)
         .map(|_| tracker.initial_genome(&mut rng))
         .collect::<Vec<_>>();
+    let mut speciation_config = config.mutation.clone();
 
     let mut best_genome = population[0].clone();
     let mut best_metrics = EvaluationSummary::default();
@@ -74,10 +75,10 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         );
         let summaries = evaluate_population(&population, &generation_seeds);
         for (genome, summary) in population.iter_mut().zip(summaries.iter()) {
-            genome.fitness = summary.fitness;
+            genome.fitness = penalized_fitness(summary.fitness, genome);
         }
 
-        let species = speciate(&population, &config.mutation);
+        let species = speciate(&population, &speciation_config);
         let average_fitness =
             population.iter().map(|genome| genome.fitness).sum::<f32>() / population.len() as f32;
         let best_index = population
@@ -103,9 +104,10 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         }
 
         println!(
-            "gen {:>4}  species {:>3}  best {:>10.2}  avg {:>10.2}  progress {:>7.2}  wins {:>2}/{}  nodes {:>3}  conns {:>4}",
+            "gen {:>4}  species {:>3}  thr {:>4.2}  best {:>10.2}  avg {:>10.2}  progress {:>7.2}  wins {:>2}/{}  nodes {:>3}  conns {:>4}",
             generation + 1,
             species.len(),
+            speciation_config.compatibility_threshold,
             summaries[best_index].fitness,
             average_fitness,
             summaries[best_index].average_progress,
@@ -131,6 +133,8 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         if generation + 1 == config.generations {
             break;
         }
+
+        adjust_compatibility_threshold(&mut speciation_config, species.len());
 
         population = reproduce_population(
             &population,
@@ -199,7 +203,7 @@ fn evaluate_population(population: &[Genome], seeds: &[u64]) -> Vec<EvaluationSu
 fn evaluate_network(network: &CompiledNetwork, seeds: &[u64]) -> EvaluationSummary {
     let mut total_fitness = 0.0;
     let mut total_progress = 0.0;
-    let mut total_rightward_reward = 0.0;
+    let mut total_input_diversity = 0.0;
     let mut wins = 0;
 
     for &seed in seeds {
@@ -208,18 +212,28 @@ fn evaluate_network(network: &CompiledNetwork, seeds: &[u64]) -> EvaluationSumma
         let mut observation = ObservationBuilder::default();
         observation.reset(&state);
 
-        let mut rightward_reward = 0.0;
+        let mut input_diversity = 0.0;
+        let mut decision_steps = 0usize;
+        let mut previous_inputs: Option<[f32; INPUT_SIZE]> = None;
         while !state.done {
             let inputs = observation.build(&state);
+            if let Some(previous) = previous_inputs {
+                input_diversity += inputs
+                    .iter()
+                    .zip(previous.iter())
+                    .map(|(current, prior)| (current - prior).abs())
+                    .sum::<f32>()
+                    / INPUT_SIZE as f32;
+            }
+            previous_inputs = Some(inputs);
+            decision_steps += 1;
             let outputs = network.activate(&inputs);
             let action = decode_action(&outputs);
-            let previous_x = state.player.body.pos.x;
-            state.step_fixed(action);
-            let delta_x = state.player.body.pos.x - previous_x;
-            if delta_x >= 0.0 {
-                rightward_reward += delta_x;
-            } else {
-                rightward_reward += delta_x * 0.25;
+            for _ in 0..4 {
+                if state.done {
+                    break;
+                }
+                state.step_fixed(action);
             }
         }
 
@@ -228,18 +242,42 @@ fn evaluate_network(network: &CompiledNetwork, seeds: &[u64]) -> EvaluationSumma
             wins += 1;
         }
 
-        let seed_fitness = report.elapsed_time;
+        let mean_input_diversity = if decision_steps > 1 {
+            input_diversity / (decision_steps - 1) as f32
+        } else {
+            0.0
+        };
+        let seed_fitness = report.elapsed_time * 10.0 + mean_input_diversity * 5.0;
         total_fitness += seed_fitness;
         total_progress += report.best_progress;
-        total_rightward_reward += rightward_reward;
+        total_input_diversity += mean_input_diversity;
     }
 
     let count = seeds.len().max(1) as f32;
     EvaluationSummary {
         fitness: total_fitness / count,
         average_progress: total_progress / count,
-        average_rightward_reward: total_rightward_reward / count,
+        average_input_diversity: total_input_diversity / count,
         wins,
+    }
+}
+
+fn penalized_fitness(base_fitness: f32, genome: &Genome) -> f32 {
+    let hidden_nodes = genome
+        .nodes
+        .iter()
+        .filter(|node| matches!(node.kind, crate::neat::NodeKind::Hidden))
+        .count() as f32;
+    let connections = genome.connections.len() as f32;
+    base_fitness - hidden_nodes * 0.0002 - connections * 0.0005
+}
+
+fn adjust_compatibility_threshold(config: &mut MutationConfig, species_count: usize) {
+    if species_count < config.target_species {
+        config.compatibility_threshold =
+            (config.compatibility_threshold - config.compatibility_threshold_step).max(0.05);
+    } else if species_count > config.target_species {
+        config.compatibility_threshold += config.compatibility_threshold_step;
     }
 }
 
@@ -432,8 +470,22 @@ mod tests {
     fn generation_seed_schedule_keeps_fixed_and_adds_random() {
         let fixed = default_training_seeds(2, 24);
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let seeds = generation_evaluation_seeds(&fixed, 4, &mut rng);
-        assert_eq!(seeds.len(), 28);
+        let seeds = generation_evaluation_seeds(&fixed, 2, &mut rng);
+        assert_eq!(seeds.len(), 26);
         assert_eq!(&seeds[..24], fixed.as_slice());
+    }
+
+    #[test]
+    fn compatibility_threshold_moves_toward_target_species() {
+        let mut mutation = MutationConfig::default();
+        let original = mutation.compatibility_threshold;
+        adjust_compatibility_threshold(&mut mutation, 1);
+        assert!(mutation.compatibility_threshold < original);
+
+        let target_species = mutation.target_species;
+        adjust_compatibility_threshold(&mut mutation, target_species + 5);
+        assert!(
+            mutation.compatibility_threshold >= original - mutation.compatibility_threshold_step
+        );
     }
 }

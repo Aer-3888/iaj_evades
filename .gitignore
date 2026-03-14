@@ -2,5 +2,7 @@ __pycache__/
 *.py[cod]
 .cache/
 
-rust_evades/target/
-rust_evades_neat/target/
+target/
+training_runs/
+checkpoints/
+.ipynb_checkpoints/

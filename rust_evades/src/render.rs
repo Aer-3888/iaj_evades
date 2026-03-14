@@ -7,7 +7,7 @@ use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use crate::{
     config::{Color, GameConfig},
     game::{Action, DoneReason, GameState},
-    neat_player::ModelController,
+    model_player::ModelController,
 };
 
 pub fn run_window(

@@ -38,7 +38,8 @@ pub struct Genome {
 pub struct EvaluationSummary {
     pub fitness: f32,
     pub average_progress: f32,
-    pub average_rightward_reward: f32,
+    #[serde(default, alias = "average_rightward_reward")]
+    pub average_input_diversity: f32,
     pub wins: u32,
 }
 
@@ -55,6 +56,8 @@ pub struct MutationConfig {
     pub compatibility_disjoint: f32,
     pub compatibility_excess: f32,
     pub compatibility_weight: f32,
+    pub target_species: usize,
+    pub compatibility_threshold_step: f32,
     pub elite_per_species: usize,
     pub tournament_size: usize,
 }
@@ -64,15 +67,17 @@ impl Default for MutationConfig {
         Self {
             weight_perturb_chance: 0.85,
             weight_reset_chance: 0.10,
-            add_connection_chance: 0.20,
-            add_node_chance: 0.08,
+            add_connection_chance: 0.03,
+            add_node_chance: 0.005,
             toggle_connection_chance: 0.02,
             mutate_only_chance: 0.25,
             crossover_chance: 0.75,
-            compatibility_threshold: 3.0,
+            compatibility_threshold: 0.4,
             compatibility_disjoint: 1.0,
             compatibility_excess: 1.0,
-            compatibility_weight: 0.4,
+            compatibility_weight: 1.0,
+            target_species: 10,
+            compatibility_threshold_step: 0.05,
             elite_per_species: 1,
             tournament_size: 3,
         }

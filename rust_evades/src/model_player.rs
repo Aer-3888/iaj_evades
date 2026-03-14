@@ -2,53 +2,23 @@ use std::{collections::HashMap, fs, path::Path};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
+use serde_json::Value;
 
 use crate::game::{Action, GameState};
 
 const RAY_COUNT: usize = 36;
 const INPUT_SIZE: usize = RAY_COUNT * 2 + 1;
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "PascalCase")]
-enum NodeKind {
-    Input,
-    Bias,
-    Hidden,
-    Output,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-struct NodeGene {
-    id: u64,
-    kind: NodeKind,
-    order: f32,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-struct ConnectionGene {
-    input: u64,
-    output: u64,
-    weight: f32,
-    enabled: bool,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-struct Genome {
-    nodes: Vec<NodeGene>,
-    connections: Vec<ConnectionGene>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-struct SavedModel {
-    input_size: usize,
-    output_size: usize,
-    genome: Genome,
+#[derive(Clone, Debug)]
+pub struct ModelController {
+    backend: Backend,
+    observation: ObservationBuilder,
 }
 
 #[derive(Clone, Debug)]
-pub struct ModelController {
-    network: CompiledNetwork,
-    observation: ObservationBuilder,
+enum Backend {
+    Neat(CompiledNeatNetwork),
+    Dqn(CompiledDqnNetwork),
 }
 
 impl ModelController {
@@ -56,26 +26,16 @@ impl ModelController {
         let path = path.as_ref();
         let json = fs::read_to_string(path)
             .with_context(|| format!("failed to read model {}", path.display()))?;
-        let saved: SavedModel = serde_json::from_str(&json)
+        let value: Value = serde_json::from_str(&json)
             .with_context(|| format!("failed to parse model {}", path.display()))?;
 
-        if saved.input_size != INPUT_SIZE {
-            anyhow::bail!(
-                "model input size {} does not match expected {}",
-                saved.input_size,
-                INPUT_SIZE
-            );
-        }
-        if saved.output_size != Action::ALL.len() {
-            anyhow::bail!(
-                "model output size {} does not match expected {}",
-                saved.output_size,
-                Action::ALL.len()
-            );
-        }
+        let backend = match value.get("model_type").and_then(Value::as_str) {
+            Some("dqn") => Backend::Dqn(CompiledDqnNetwork::load(value)?),
+            _ => Backend::Neat(CompiledNeatNetwork::load(value)?),
+        };
 
         Ok(Self {
-            network: CompiledNetwork::from_genome(&saved.genome, INPUT_SIZE),
+            backend,
             observation: ObservationBuilder::default(),
         })
     }
@@ -86,7 +46,10 @@ impl ModelController {
 
     pub fn choose_action(&mut self, state: &GameState) -> Action {
         let inputs = self.observation.build(state);
-        let outputs = self.network.activate(&inputs);
+        let outputs = match &self.backend {
+            Backend::Neat(network) => network.activate(&inputs),
+            Backend::Dqn(network) => network.activate(&inputs),
+        };
         let index = outputs
             .iter()
             .enumerate()
@@ -244,16 +207,73 @@ fn raycast_circle_distance(
     Some(distance)
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+enum NodeKind {
+    Input,
+    Bias,
+    Hidden,
+    Output,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct NodeGene {
+    id: u64,
+    kind: NodeKind,
+    order: f32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct ConnectionGene {
+    input: u64,
+    output: u64,
+    weight: f32,
+    enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct NeatGenome {
+    nodes: Vec<NodeGene>,
+    connections: Vec<ConnectionGene>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct NeatSavedModel {
+    input_size: usize,
+    output_size: usize,
+    genome: NeatGenome,
+}
+
 #[derive(Clone, Debug)]
-struct CompiledNetwork {
+struct CompiledNeatNetwork {
     node_kinds: Vec<NodeKind>,
     input_positions: Vec<usize>,
     output_positions: Vec<usize>,
     incoming: Vec<Vec<(usize, f32)>>,
 }
 
-impl CompiledNetwork {
-    fn from_genome(genome: &Genome, input_count: usize) -> Self {
+impl CompiledNeatNetwork {
+    fn load(value: Value) -> Result<Self> {
+        let saved: NeatSavedModel =
+            serde_json::from_value(value).context("failed to decode NEAT model")?;
+        if saved.input_size != INPUT_SIZE {
+            anyhow::bail!(
+                "model input size {} does not match expected {}",
+                saved.input_size,
+                INPUT_SIZE
+            );
+        }
+        if saved.output_size != Action::ALL.len() {
+            anyhow::bail!(
+                "model output size {} does not match expected {}",
+                saved.output_size,
+                Action::ALL.len()
+            );
+        }
+        Ok(Self::from_genome(&saved.genome, INPUT_SIZE))
+    }
+
+    fn from_genome(genome: &NeatGenome, input_count: usize) -> Self {
         let mut nodes = genome.nodes.clone();
         nodes.sort_by(|left, right| {
             left.order
@@ -325,6 +345,75 @@ impl CompiledNetwork {
             .iter()
             .map(|&position| values[position])
             .collect()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct DqnLayer {
+    input_size: usize,
+    output_size: usize,
+    weights: Vec<f32>,
+    biases: Vec<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct DqnSavedModel {
+    model_type: String,
+    input_size: usize,
+    output_size: usize,
+    layers: Vec<DqnLayer>,
+}
+
+#[derive(Clone, Debug)]
+struct CompiledDqnNetwork {
+    layers: Vec<DqnLayer>,
+}
+
+impl CompiledDqnNetwork {
+    fn load(value: Value) -> Result<Self> {
+        let saved: DqnSavedModel =
+            serde_json::from_value(value).context("failed to decode DQN model")?;
+        if saved.model_type != "dqn" {
+            anyhow::bail!("unsupported model type {}", saved.model_type);
+        }
+        if saved.input_size != INPUT_SIZE {
+            anyhow::bail!(
+                "model input size {} does not match expected {}",
+                saved.input_size,
+                INPUT_SIZE
+            );
+        }
+        if saved.output_size != Action::ALL.len() {
+            anyhow::bail!(
+                "model output size {} does not match expected {}",
+                saved.output_size,
+                Action::ALL.len()
+            );
+        }
+        Ok(Self {
+            layers: saved.layers,
+        })
+    }
+
+    fn activate(&self, inputs: &[f32]) -> Vec<f32> {
+        let mut activations = inputs.to_vec();
+        for (index, layer) in self.layers.iter().enumerate() {
+            let mut next = vec![0.0; layer.output_size];
+            for out in 0..layer.output_size {
+                let mut sum = layer.biases[out];
+                let row = out * layer.input_size;
+                for input in 0..layer.input_size {
+                    sum += layer.weights[row + input] * activations[input];
+                }
+                next[out] = if index + 1 == self.layers.len() {
+                    sum
+                } else {
+                    sum.max(0.0)
+                };
+            }
+            activations = next;
+        }
+        activations
     }
 }
 
