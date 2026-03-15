@@ -9,8 +9,8 @@ use crate::{
 pub struct EvaluationSummary {
     pub average_survival_time: f32,
     pub average_return: f32,
-    pub average_progress: f32,
-    pub wins: u32,
+    pub average_evades: f32,
+    pub timeouts: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ impl SavedModel {
     ) -> Self {
         Self {
             model_type: "dqn".to_string(),
-            format_version: 1,
+            format_version: 2,
             input_size: INPUT_SIZE,
             output_size: 9,
             ray_count: RAY_COUNT,

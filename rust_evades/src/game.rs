@@ -44,15 +44,32 @@ impl Action {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
 }
 
 impl Vec2 {
-    fn length_squared(self) -> f32 {
+    pub fn length_squared(self) -> f32 {
         self.x * self.x + self.y * self.y
+    }
+
+    pub fn length(self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    pub fn normalized_or_zero(self) -> Self {
+        let len_sq = self.length_squared();
+        if len_sq > 0.0 {
+            let inv_len = len_sq.sqrt().recip();
+            Self {
+                x: self.x * inv_len,
+                y: self.y * inv_len,
+            }
+        } else {
+            Self::default()
+        }
     }
 }
 
@@ -77,57 +94,29 @@ pub struct Player {
 }
 
 impl Player {
-    fn apply_action(&mut self, action: Action, speed: f32, dt: f32, config: &GameConfig) {
+    fn apply_action(&mut self, action: Action, speed: f32, dt: f32) {
         let (dx, dy) = action.vector();
-        let len_sq = dx * dx + dy * dy;
-        if len_sq > 0.0 {
-            let inv_len = len_sq.sqrt().recip();
-            self.body.vel.x = dx * inv_len * speed;
-            self.body.vel.y = dy * inv_len * speed;
-        } else {
-            self.body.vel.x = 0.0;
-            self.body.vel.y = 0.0;
-        }
-
+        let direction = Vec2 { x: dx, y: dy }.normalized_or_zero();
+        self.body.vel = Vec2 {
+            x: direction.x * speed,
+            y: direction.y * speed,
+        };
         self.body.pos.x += self.body.vel.x * dt;
         self.body.pos.y += self.body.vel.y * dt;
-        self.body.pos.x = self
-            .body
-            .pos
-            .x
-            .clamp(self.body.radius, config.world_width - self.body.radius);
-        self.body.pos.y = self.body.pos.y.clamp(
-            config.corridor_top + self.body.radius,
-            config.corridor_bottom - self.body.radius,
-        );
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Enemy {
     pub body: CircleBody,
+    pub remaining_life: f32,
 }
 
 impl Enemy {
-    fn update(&mut self, dt: f32, config: &GameConfig) {
+    fn update(&mut self, dt: f32) {
         self.body.pos.x += self.body.vel.x * dt;
         self.body.pos.y += self.body.vel.y * dt;
-
-        if self.body.pos.x - self.body.radius <= 0.0 {
-            self.body.pos.x = self.body.radius;
-            self.body.vel.x *= -1.0;
-        } else if self.body.pos.x + self.body.radius >= config.world_width {
-            self.body.pos.x = config.world_width - self.body.radius;
-            self.body.vel.x *= -1.0;
-        }
-
-        if self.body.pos.y - self.body.radius <= config.corridor_top {
-            self.body.pos.y = config.corridor_top + self.body.radius;
-            self.body.vel.y *= -1.0;
-        } else if self.body.pos.y + self.body.radius >= config.corridor_bottom {
-            self.body.pos.y = config.corridor_bottom - self.body.radius;
-            self.body.vel.y *= -1.0;
-        }
+        self.remaining_life -= dt;
     }
 }
 
@@ -135,7 +124,6 @@ impl Enemy {
 pub enum DoneReason {
     None,
     Collision,
-    Goal,
     Timeout,
 }
 
@@ -144,7 +132,6 @@ impl DoneReason {
         match self {
             DoneReason::None => "running",
             DoneReason::Collision => "collision",
-            DoneReason::Goal => "goal",
             DoneReason::Timeout => "timeout",
         }
     }
@@ -160,28 +147,29 @@ pub struct StepResult {
 #[derive(Clone, Copy, Debug)]
 pub struct EpisodeReport {
     pub elapsed_time: f32,
-    pub best_progress: f32,
-    pub progress_ratio: f32,
-    pub fitness: f32,
+    pub enemies_evaded: u32,
+    pub total_reward: f32,
     pub done_reason: DoneReason,
-    pub won: bool,
+    pub survived_full_episode: bool,
 }
 
 pub struct GameState {
     pub config: GameConfig,
     pub base_seed: u64,
     pub total_deaths: u32,
-    pub total_wins: u32,
+    pub total_timeouts: u32,
     pub episode_index: u32,
-    pub best_progress_ever: f32,
+    pub best_survival_ever: f32,
     pub done: bool,
     pub done_reason: DoneReason,
     pub elapsed_time: f32,
-    pub best_x: f32,
     pub last_reward: f32,
+    pub episode_return: f32,
     pub player: Player,
     pub enemies: Vec<Enemy>,
+    pub enemies_evaded: u32,
     rng: ChaCha8Rng,
+    next_spawn_in: f32,
 }
 
 impl GameState {
@@ -190,8 +178,8 @@ impl GameState {
         let rng = ChaCha8Rng::seed_from_u64(base_seed);
         let player = Player {
             body: CircleBody {
-                pos: Vec2 { x: 0.0, y: 0.0 },
-                vel: Vec2 { x: 0.0, y: 0.0 },
+                pos: Vec2::default(),
+                vel: Vec2::default(),
                 radius: config.player_radius,
             },
         };
@@ -200,17 +188,19 @@ impl GameState {
             config,
             base_seed,
             total_deaths: 0,
-            total_wins: 0,
+            total_timeouts: 0,
             episode_index: 0,
-            best_progress_ever: 0.0,
+            best_survival_ever: 0.0,
             done: false,
             done_reason: DoneReason::None,
             elapsed_time: 0.0,
-            best_x: 0.0,
             last_reward: 0.0,
+            episode_return: 0.0,
             player,
             enemies: Vec::new(),
+            enemies_evaded: 0,
             rng,
+            next_spawn_in: 0.0,
         };
         state.reset(None);
         state
@@ -219,23 +209,21 @@ impl GameState {
     pub fn reset(&mut self, seed: Option<u64>) {
         let actual_seed = seed.unwrap_or(self.base_seed);
         self.rng = ChaCha8Rng::seed_from_u64(actual_seed);
-        let start_y = self.config.corridor_top + self.config.corridor_height() * 0.5;
         self.player = Player {
             body: CircleBody {
-                pos: Vec2 {
-                    x: self.config.start_margin,
-                    y: start_y,
-                },
-                vel: Vec2 { x: 0.0, y: 0.0 },
+                pos: Vec2::default(),
+                vel: Vec2::default(),
                 radius: self.config.player_radius,
             },
         };
-        self.enemies = self.spawn_enemies();
+        self.enemies.clear();
+        self.enemies_evaded = 0;
         self.done = false;
         self.done_reason = DoneReason::None;
         self.elapsed_time = 0.0;
-        self.best_x = self.player.body.pos.x;
         self.last_reward = 0.0;
+        self.episode_return = 0.0;
+        self.next_spawn_in = self.random_spawn_interval();
         self.episode_index += 1;
     }
 
@@ -249,37 +237,38 @@ impl GameState {
         }
 
         let delta = dt.unwrap_or(self.config.fixed_timestep);
-        let previous_best = self.best_x;
-
         self.player
-            .apply_action(action, self.config.player_speed, delta, &self.config);
-        for enemy in &mut self.enemies {
-            enemy.update(delta, &self.config);
-        }
-
+            .apply_action(action, self.config.player_speed, delta);
         self.elapsed_time += delta;
-        self.best_x = self.best_x.max(self.player.body.pos.x);
-        self.best_progress_ever = self.best_progress_ever.max(self.best_progress());
 
-        let mut reward = (self.best_x - previous_best) * 0.02;
+        for enemy in &mut self.enemies {
+            enemy.update(delta);
+        }
+        self.spawn_enemies(delta);
 
-        if self.touched_wall() || self.collided() {
+        let mut reward = self.config.survival_reward_per_second * delta;
+
+        if self.collided() {
             self.done = true;
             self.done_reason = DoneReason::Collision;
             self.total_deaths += 1;
-            reward -= 150.0;
-        } else if self.player.body.pos.x + self.player.body.radius >= self.config.goal_x() {
-            self.done = true;
-            self.done_reason = DoneReason::Goal;
-            self.total_wins += 1;
-            reward += 250.0;
-        } else if self.elapsed_time >= self.config.max_episode_time {
-            self.done = true;
-            self.done_reason = DoneReason::Timeout;
-            reward -= 50.0;
+            reward += self.config.collision_penalty;
+        } else {
+            let evaded = self.collect_expired_enemies();
+            self.enemies_evaded += evaded;
+            reward += evaded as f32 * self.config.enemy_evade_reward;
+
+            if self.elapsed_time >= self.config.max_episode_time {
+                self.done = true;
+                self.done_reason = DoneReason::Timeout;
+                self.total_timeouts += 1;
+                reward += self.config.timeout_bonus;
+            }
         }
 
+        self.best_survival_ever = self.best_survival_ever.max(self.elapsed_time);
         self.last_reward = reward;
+        self.episode_return += reward;
 
         StepResult {
             reward,
@@ -293,186 +282,72 @@ impl GameState {
         self.step(action, Some(self.config.fixed_timestep))
     }
 
-    pub fn best_progress(&self) -> f32 {
-        (self.best_x - self.config.start_margin).max(0.0)
-    }
-
-    pub fn progress_ratio(&self) -> f32 {
-        let total_distance = self.config.goal_x() - self.config.start_margin;
-        (self.best_progress() / total_distance).clamp(0.0, 1.0)
-    }
-
     pub fn fitness(&self) -> f32 {
-        let mut fitness = self.best_progress() - self.elapsed_time * 2.0;
-        match self.done_reason {
-            DoneReason::Goal => fitness += 2500.0,
-            DoneReason::Collision => fitness -= 400.0,
-            DoneReason::Timeout => fitness -= 150.0,
-            DoneReason::None => {}
-        }
-        fitness
+        self.episode_return
     }
 
     pub fn episode_report(&self) -> EpisodeReport {
         EpisodeReport {
             elapsed_time: self.elapsed_time,
-            best_progress: self.best_progress(),
-            progress_ratio: self.progress_ratio(),
-            fitness: self.fitness(),
+            enemies_evaded: self.enemies_evaded,
+            total_reward: self.episode_return,
             done_reason: self.done_reason,
-            won: self.done_reason == DoneReason::Goal,
+            survived_full_episode: self.done_reason == DoneReason::Timeout,
         }
     }
 
-    fn spawn_enemies(&mut self) -> Vec<Enemy> {
-        let wall_enemy_count = self.config.wall_enemy_pairs_per_wall * 4;
-        let mut enemies = Vec::with_capacity(self.config.enemy_count + wall_enemy_count);
-        enemies.extend(self.spawn_wall_enemies());
-        let min_x = 0.0;
-        let end_safe_x = self.config.goal_x() - 180.0;
-        let player_spawn_clearance = self.config.player_radius * 2.0;
+    fn spawn_enemies(&mut self, delta: f32) {
+        self.next_spawn_in -= delta;
+        while self.next_spawn_in <= 0.0 {
+            let enemy = self.spawn_enemy();
+            self.enemies.push(enemy);
+            self.next_spawn_in += self.random_spawn_interval();
+        }
+    }
 
-        for _ in 0..self.config.enemy_count {
-            let radius = self
-                .rng
-                .gen_range(self.config.enemy_radius_min..=self.config.enemy_radius_max);
-            let mut spawned = None;
+    fn spawn_enemy(&mut self) -> Enemy {
+        let angle = self.rng.gen_range(0.0..std::f32::consts::TAU);
+        let direction = Vec2 {
+            x: angle.cos(),
+            y: angle.sin(),
+        };
+        let spawn_offset = Vec2 {
+            x: direction.x * self.config.enemy_spawn_distance,
+            y: direction.y * self.config.enemy_spawn_distance,
+        };
+        let spawn_pos = Vec2 {
+            x: self.player.body.pos.x + spawn_offset.x,
+            y: self.player.body.pos.y + spawn_offset.y,
+        };
 
-            for _ in 0..500 {
-                let x = self.rng.gen_range(min_x + radius..end_safe_x);
-                let y = self.rng.gen_range(
-                    self.config.corridor_top + radius..self.config.corridor_bottom - radius,
-                );
-                let speed = self
-                    .rng
-                    .gen_range(self.config.enemy_speed_min..=self.config.enemy_speed_max);
-                let angle = self.rng.gen_range(0.0..std::f32::consts::TAU);
-                let candidate = Enemy {
-                    body: CircleBody {
-                        pos: Vec2 { x, y },
-                        vel: Vec2 {
-                            x: angle.cos() * speed,
-                            y: angle.sin() * speed,
-                        },
-                        radius,
-                    },
-                };
+        Enemy {
+            body: CircleBody {
+                pos: spawn_pos,
+                vel: Vec2 {
+                    x: -direction.x * self.config.enemy_speed,
+                    y: -direction.y * self.config.enemy_speed,
+                },
+                radius: self.config.enemy_radius,
+            },
+            remaining_life: self.config.enemy_lifetime,
+        }
+    }
 
-                let far_enough_from_player = self.player.body.distance_squared_to(&candidate.body)
-                    > (candidate.body.radius + player_spawn_clearance)
-                        * (candidate.body.radius + player_spawn_clearance);
-                let clear_of_other_enemies = enemies.iter().all(|other: &Enemy| {
-                    let dx = candidate.body.pos.x - other.body.pos.x;
-                    let dy = candidate.body.pos.y - other.body.pos.y;
-                    let min_gap = candidate.body.radius + other.body.radius + 28.0;
-                    dx * dx + dy * dy > min_gap * min_gap
-                });
+    fn random_spawn_interval(&mut self) -> f32 {
+        self.rng
+            .gen_range(self.config.enemy_spawn_interval_min..=self.config.enemy_spawn_interval_max)
+    }
 
-                if far_enough_from_player && clear_of_other_enemies {
-                    spawned = Some(candidate);
-                    break;
-                }
+    fn collect_expired_enemies(&mut self) -> u32 {
+        let mut evaded = 0;
+        self.enemies.retain(|enemy| {
+            let keep = enemy.remaining_life > 0.0;
+            if !keep {
+                evaded += 1;
             }
-
-            let enemy = spawned.unwrap_or_else(|| Enemy {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: self
-                            .rng
-                            .gen_range(min_x + radius..end_safe_x)
-                            .max(self.player.body.radius + radius + player_spawn_clearance),
-                        y: self.rng.gen_range(
-                            self.config.corridor_top + radius..self.config.corridor_bottom - radius,
-                        ),
-                    },
-                    vel: Vec2 {
-                        x: if self.rng.gen_bool(0.5) { 1.0 } else { -1.0 }
-                            * self.rng.gen_range(
-                                self.config.enemy_speed_min..=self.config.enemy_speed_max,
-                            ),
-                        y: if self.rng.gen_bool(0.5) { 1.0 } else { -1.0 }
-                            * self.rng.gen_range(
-                                self.config.enemy_speed_min..=self.config.enemy_speed_max,
-                            ),
-                    },
-                    radius,
-                },
-            });
-
-            enemies.push(enemy);
-        }
-
-        enemies
-    }
-
-    fn spawn_wall_enemies(&self) -> Vec<Enemy> {
-        let mut enemies = Vec::with_capacity(self.config.wall_enemy_pairs_per_wall * 4);
-        let lane_start = self.config.start_margin + 260.0;
-        let lane_end = self.config.goal_x() - 220.0;
-        let spacing =
-            (lane_end - lane_start) / (self.config.wall_enemy_pairs_per_wall.max(1) as f32 + 1.0);
-        let top_y = self.config.corridor_top + self.config.wall_enemy_radius;
-        let bottom_y = self.config.corridor_bottom - self.config.wall_enemy_radius;
-
-        for index in 0..self.config.wall_enemy_pairs_per_wall {
-            let anchor_x = lane_start + spacing * (index as f32 + 1.0);
-            let offset = 48.0;
-
-            enemies.push(Enemy {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: anchor_x - offset,
-                        y: top_y,
-                    },
-                    vel: Vec2 {
-                        x: self.config.wall_enemy_speed,
-                        y: 0.0,
-                    },
-                    radius: self.config.wall_enemy_radius,
-                },
-            });
-            enemies.push(Enemy {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: anchor_x + offset,
-                        y: top_y,
-                    },
-                    vel: Vec2 {
-                        x: -self.config.wall_enemy_speed,
-                        y: 0.0,
-                    },
-                    radius: self.config.wall_enemy_radius,
-                },
-            });
-            enemies.push(Enemy {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: anchor_x - offset,
-                        y: bottom_y,
-                    },
-                    vel: Vec2 {
-                        x: self.config.wall_enemy_speed,
-                        y: 0.0,
-                    },
-                    radius: self.config.wall_enemy_radius,
-                },
-            });
-            enemies.push(Enemy {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: anchor_x + offset,
-                        y: bottom_y,
-                    },
-                    vel: Vec2 {
-                        x: -self.config.wall_enemy_speed,
-                        y: 0.0,
-                    },
-                    radius: self.config.wall_enemy_radius,
-                },
-            });
-        }
-
-        enemies
+            keep
+        });
+        evaded
     }
 
     fn collided(&self) -> bool {
@@ -480,67 +355,6 @@ impl GameState {
             let sum = self.player.body.radius + enemy.body.radius;
             self.player.body.distance_squared_to(&enemy.body) <= sum * sum
         })
-    }
-
-    fn touched_wall(&self) -> bool {
-        self.player.body.pos.x - self.player.body.radius <= 0.0
-            || self.player.body.pos.x + self.player.body.radius >= self.config.world_width
-            || self.player.body.pos.y - self.player.body.radius <= self.config.corridor_top
-            || self.player.body.pos.y + self.player.body.radius >= self.config.corridor_bottom
-    }
-}
-
-pub fn reflect_axis(
-    position: f32,
-    velocity: f32,
-    radius: f32,
-    min: f32,
-    max: f32,
-    dt: f32,
-) -> (f32, f32) {
-    let mut pos = position + velocity * dt;
-    let mut vel = velocity;
-    let min_bound = min + radius;
-    let max_bound = max - radius;
-
-    if min_bound >= max_bound {
-        return (position, 0.0);
-    }
-
-    while pos < min_bound || pos > max_bound {
-        if pos < min_bound {
-            pos = min_bound + (min_bound - pos);
-            vel = -vel;
-        } else if pos > max_bound {
-            pos = max_bound - (pos - max_bound);
-            vel = -vel;
-        }
-    }
-
-    (pos, vel)
-}
-
-pub fn simulate_enemy_body(body: &CircleBody, dt: f32, config: &GameConfig) -> CircleBody {
-    let (x, vx) = reflect_axis(
-        body.pos.x,
-        body.vel.x,
-        body.radius,
-        0.0,
-        config.world_width,
-        dt,
-    );
-    let (y, vy) = reflect_axis(
-        body.pos.y,
-        body.vel.y,
-        body.radius,
-        config.corridor_top,
-        config.corridor_bottom,
-        dt,
-    );
-    CircleBody {
-        pos: Vec2 { x, y },
-        vel: Vec2 { x: vx, y: vy },
-        radius: body.radius,
     }
 }
 
@@ -551,24 +365,10 @@ pub fn simulate_player_position(
     config: &GameConfig,
 ) -> Vec2 {
     let (dx, dy) = action.vector();
-    let direction = Vec2 { x: dx, y: dy };
-    let speed = if direction.length_squared() > 0.0 {
-        let inv_len = direction.length_squared().sqrt().recip();
-        Vec2 {
-            x: direction.x * inv_len * config.player_speed,
-            y: direction.y * inv_len * config.player_speed,
-        }
-    } else {
-        Vec2 { x: 0.0, y: 0.0 }
-    };
-
+    let direction = Vec2 { x: dx, y: dy }.normalized_or_zero();
     Vec2 {
-        x: (player.body.pos.x + speed.x * dt)
-            .clamp(player.body.radius, config.world_width - player.body.radius),
-        y: (player.body.pos.y + speed.y * dt).clamp(
-            config.corridor_top + player.body.radius,
-            config.corridor_bottom - player.body.radius,
-        ),
+        x: player.body.pos.x + direction.x * config.player_speed * dt,
+        y: player.body.pos.y + direction.y * config.player_speed * dt,
     }
 }
 
@@ -576,85 +376,109 @@ pub fn simulate_player_position(
 mod tests {
     use super::*;
 
+    fn approx_eq(left: f32, right: f32) {
+        assert!((left - right).abs() < 1.0e-4, "{left} != {right}");
+    }
+
     #[test]
-    fn reaching_goal_finishes_episode() {
+    fn infinite_space_allows_negative_positions() {
         let mut state = GameState::new(GameConfig::default(), Some(1));
-        state.enemies.clear();
-        state.player.body.pos.x = state.config.goal_x() - state.player.body.radius - 1.0;
+        for _ in 0..30 {
+            let result = state.step_fixed(Action::UpLeft);
+            assert!(!result.done);
+        }
 
-        let result = state.step(Action::Right, Some(state.config.fixed_timestep));
+        assert!(state.player.body.pos.x < 0.0);
+        assert!(state.player.body.pos.y < 0.0);
+    }
 
-        assert!(result.done);
-        assert_eq!(result.done_reason, DoneReason::Goal);
+    #[test]
+    fn spawned_enemy_motion_stays_straight() {
+        let mut state = GameState::new(GameConfig::default(), Some(5));
+        state.next_spawn_in = 0.0;
+        state.step_fixed(Action::Idle);
+        assert_eq!(state.enemies.len(), 1);
+
+        let initial = state.enemies[0];
+        state.step_fixed(Action::Idle);
+        let updated = state.enemies[0];
+
+        approx_eq(updated.body.vel.x, initial.body.vel.x);
+        approx_eq(updated.body.vel.y, initial.body.vel.y);
+        approx_eq(
+            updated.body.pos.x,
+            initial.body.pos.x + initial.body.vel.x * state.config.fixed_timestep,
+        );
+        approx_eq(
+            updated.body.pos.y,
+            initial.body.pos.y + initial.body.vel.y * state.config.fixed_timestep,
+        );
+    }
+
+    #[test]
+    fn seeded_spawns_are_reproducible() {
+        let mut left = GameState::new(GameConfig::default(), Some(9));
+        let mut right = GameState::new(GameConfig::default(), Some(9));
+        left.next_spawn_in = 0.0;
+        right.next_spawn_in = 0.0;
+
+        left.step_fixed(Action::Idle);
+        right.step_fixed(Action::Idle);
+
+        assert_eq!(left.enemies.len(), 1);
+        assert_eq!(right.enemies.len(), 1);
+        approx_eq(left.enemies[0].body.pos.x, right.enemies[0].body.pos.x);
+        approx_eq(left.enemies[0].body.pos.y, right.enemies[0].body.pos.y);
+        approx_eq(left.enemies[0].body.vel.x, right.enemies[0].body.vel.x);
+        approx_eq(left.enemies[0].body.vel.y, right.enemies[0].body.vel.y);
     }
 
     #[test]
     fn collision_finishes_episode() {
         let mut state = GameState::new(GameConfig::default(), Some(1));
-        state.enemies.clear();
         state.enemies.push(Enemy {
             body: CircleBody {
                 pos: state.player.body.pos,
-                vel: Vec2 { x: 0.0, y: 0.0 },
+                vel: Vec2::default(),
                 radius: state.player.body.radius,
             },
+            remaining_life: 1.0,
         });
 
-        let result = state.step(Action::Idle, Some(state.config.fixed_timestep));
+        let result = state.step_fixed(Action::Idle);
 
         assert!(result.done);
         assert_eq!(result.done_reason, DoneReason::Collision);
     }
 
     #[test]
-    fn reset_adds_wall_enemies() {
-        let config = GameConfig::default();
-        let state = GameState::new(config.clone(), Some(1));
-        assert!(state.enemies.len() >= config.enemy_count + config.wall_enemy_pairs_per_wall * 4);
+    fn timeout_finishes_episode() {
+        let mut config = GameConfig::default();
+        config.max_episode_time = config.fixed_timestep;
+        let mut state = GameState::new(config, Some(1));
+
+        let result = state.step_fixed(Action::Idle);
+
+        assert!(result.done);
+        assert_eq!(result.done_reason, DoneReason::Timeout);
     }
 
     #[test]
-    fn wall_enemies_spawn_on_top_and_bottom_edges() {
-        let config = GameConfig::default();
-        let state = GameState::new(config.clone(), Some(1));
-        let top_y = config.corridor_top + config.wall_enemy_radius;
-        let bottom_y = config.corridor_bottom - config.wall_enemy_radius;
-        let wall_enemy_total = state
-            .enemies
-            .iter()
-            .filter(|enemy| {
-                enemy.body.radius == config.wall_enemy_radius
-                    && (enemy.body.pos.y == top_y || enemy.body.pos.y == bottom_y)
-                    && enemy.body.vel.y == 0.0
-            })
-            .count();
-        assert_eq!(wall_enemy_total, config.wall_enemy_pairs_per_wall * 4);
-    }
-
-    #[test]
-    fn random_enemies_do_not_spawn_within_one_player_radius_gap() {
-        let config = GameConfig::default();
-        let state = GameState::new(config.clone(), Some(1));
-        let min_center_distance = config.player_radius * 2.0;
-
-        for enemy in state.enemies.iter().filter(|enemy| {
-            enemy.body.radius != config.wall_enemy_radius || enemy.body.vel.y != 0.0
-        }) {
-            let actual = state.player.body.distance_squared_to(&enemy.body).sqrt();
-            let required = enemy.body.radius + min_center_distance;
-            assert!(actual > required);
-        }
-    }
-
-    #[test]
-    fn touching_top_wall_finishes_episode() {
+    fn expired_enemies_count_as_evaded() {
         let mut state = GameState::new(GameConfig::default(), Some(1));
-        state.enemies.clear();
-        state.player.body.pos.y = state.config.corridor_top + state.player.body.radius + 1.0;
+        state.enemies.push(Enemy {
+            body: CircleBody {
+                pos: Vec2 { x: 128.0, y: 0.0 },
+                vel: Vec2::default(),
+                radius: state.config.enemy_radius,
+            },
+            remaining_life: 0.0,
+        });
 
-        let result = state.step(Action::Up, Some(state.config.fixed_timestep));
+        let result = state.step_fixed(Action::Idle);
 
-        assert!(result.done);
-        assert_eq!(result.done_reason, DoneReason::Collision);
+        assert!(!result.done);
+        assert_eq!(state.enemies_evaded, 1);
+        assert!(result.reward > state.config.fixed_timestep);
     }
 }
