@@ -1,4 +1,4 @@
-use rand::{Rng, SeedableRng};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::config::GameConfig;
@@ -306,11 +306,7 @@ impl GameState {
     }
 
     fn spawn_enemy(&mut self) -> Enemy {
-        let angle = self.rng.gen_range(0.0..std::f32::consts::TAU);
-        let direction = Vec2 {
-            x: angle.cos(),
-            y: angle.sin(),
-        };
+        let direction = self.sample_spawn_direction();
         let spawn_offset = Vec2 {
             x: direction.x * self.config.enemy_spawn_distance,
             y: direction.y * self.config.enemy_spawn_distance,
@@ -336,6 +332,60 @@ impl GameState {
     fn random_spawn_interval(&mut self) -> f32 {
         self.rng
             .gen_range(self.config.enemy_spawn_interval_min..=self.config.enemy_spawn_interval_max)
+    }
+
+    fn sample_spawn_direction(&mut self) -> Vec2 {
+        let candidate_count = self.config.enemy_spawn_density_sample_count.max(1);
+        let phase = self.rng.gen_range(0.0..std::f32::consts::TAU);
+        let probe_distance =
+            self.config.enemy_spawn_distance * self.config.enemy_spawn_density_probe_distance_scale;
+        let mut best_density = f32::INFINITY;
+        let mut best_directions = Vec::with_capacity(candidate_count);
+
+        for index in 0..candidate_count {
+            let angle = phase + std::f32::consts::TAU * index as f32 / candidate_count as f32;
+            let direction = Vec2 {
+                x: angle.cos(),
+                y: angle.sin(),
+            };
+            let probe_center = Vec2 {
+                x: self.player.body.pos.x + direction.x * probe_distance,
+                y: self.player.body.pos.y + direction.y * probe_distance,
+            };
+            let density = self.local_enemy_density(probe_center);
+
+            if density + 1.0e-5 < best_density {
+                best_density = density;
+                best_directions.clear();
+                best_directions.push(direction);
+            } else if (density - best_density).abs() <= 1.0e-5 {
+                best_directions.push(direction);
+            }
+        }
+
+        best_directions
+            .choose(&mut self.rng)
+            .copied()
+            .unwrap_or(Vec2 { x: 1.0, y: 0.0 })
+    }
+
+    fn local_enemy_density(&self, point: Vec2) -> f32 {
+        let probe_radius = self.config.enemy_spawn_density_probe_radius.max(self.config.enemy_radius);
+        let probe_radius_sq = probe_radius * probe_radius;
+
+        self.enemies
+            .iter()
+            .map(|enemy| {
+                let dx = point.x - enemy.body.pos.x;
+                let dy = point.y - enemy.body.pos.y;
+                let distance_sq = dx * dx + dy * dy;
+                if distance_sq >= probe_radius_sq {
+                    0.0
+                } else {
+                    1.0 - distance_sq / probe_radius_sq
+                }
+            })
+            .sum()
     }
 
     fn collect_expired_enemies(&mut self) -> u32 {
@@ -434,6 +484,60 @@ mod tests {
     }
 
     #[test]
+    fn spawn_bias_prefers_low_density_sector() {
+        let mut config = GameConfig::default();
+        config.enemy_spawn_density_sample_count = 8;
+        config.enemy_spawn_density_probe_distance_scale = 1.0;
+        config.enemy_spawn_density_probe_radius = 72.0;
+        let mut state = GameState::new(config, Some(3));
+        state.enemies.clear();
+        state.enemies.extend([
+            enemy_at(0.0, -state.config.enemy_spawn_distance),
+            enemy_at(-state.config.enemy_spawn_distance, 0.0),
+            enemy_at(0.0, state.config.enemy_spawn_distance),
+        ]);
+        state.next_spawn_in = 0.0;
+
+        state.step_fixed(Action::Idle);
+
+        assert_eq!(state.enemies.len(), 4);
+        let enemy = state.enemies[3];
+        let offset_x = enemy.body.pos.x - state.player.body.pos.x;
+        let offset_y = enemy.body.pos.y - state.player.body.pos.y;
+        assert!(offset_x > 0.0);
+        assert!(offset_x.abs() > offset_y.abs());
+        assert!(enemy.body.vel.x < 0.0);
+        assert!(enemy.body.vel.x.abs() > enemy.body.vel.y.abs());
+    }
+
+    #[test]
+    fn spawn_bias_no_longer_depends_on_heading() {
+        let mut config = GameConfig::default();
+        config.enemy_spawn_density_sample_count = 8;
+        config.enemy_spawn_density_probe_distance_scale = 1.0;
+        config.enemy_spawn_density_probe_radius = 72.0;
+        let mut state = GameState::new(config, Some(4));
+        state.step_fixed(Action::Up);
+        state.enemies.clear();
+        state.enemies.extend([
+            enemy_at_relative(&state, state.config.enemy_spawn_distance, 0.0),
+            enemy_at_relative(&state, 0.0, -state.config.enemy_spawn_distance),
+            enemy_at_relative(&state, 0.0, state.config.enemy_spawn_distance),
+        ]);
+        state.next_spawn_in = 0.0;
+        state.step_fixed(Action::Idle);
+
+        assert_eq!(state.enemies.len(), 4);
+        let enemy = state.enemies[3];
+        let offset_x = enemy.body.pos.x - state.player.body.pos.x;
+        let offset_y = enemy.body.pos.y - state.player.body.pos.y;
+        assert!(offset_x < 0.0);
+        assert!(offset_x.abs() > offset_y.abs());
+        assert!(enemy.body.vel.x > 0.0);
+        assert!(enemy.body.vel.x.abs() > enemy.body.vel.y.abs());
+    }
+
+    #[test]
     fn collision_finishes_episode() {
         let mut state = GameState::new(GameConfig::default(), Some(1));
         state.enemies.push(Enemy {
@@ -480,5 +584,30 @@ mod tests {
         assert!(!result.done);
         assert_eq!(state.enemies_evaded, 1);
         assert!(result.reward > state.config.fixed_timestep);
+    }
+
+    fn enemy_at(x: f32, y: f32) -> Enemy {
+        Enemy {
+            body: CircleBody {
+                pos: Vec2 { x, y },
+                vel: Vec2::default(),
+                radius: GameConfig::default().enemy_radius,
+            },
+            remaining_life: 1.0,
+        }
+    }
+
+    fn enemy_at_relative(state: &GameState, dx: f32, dy: f32) -> Enemy {
+        Enemy {
+            body: CircleBody {
+                pos: Vec2 {
+                    x: state.player.body.pos.x + dx,
+                    y: state.player.body.pos.y + dy,
+                },
+                vel: Vec2::default(),
+                radius: state.config.enemy_radius,
+            },
+            remaining_life: 1.0,
+        }
     }
 }

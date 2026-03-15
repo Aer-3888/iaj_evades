@@ -6,6 +6,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct EvaluationSummary {
     pub average_survival_time: f32,
     pub average_return: f32,
@@ -25,6 +26,8 @@ pub struct SavedModel {
     pub random_seeds_per_cycle: usize,
     pub action_repeat: usize,
     pub episodes_completed: usize,
+    #[serde(default)]
+    pub total_steps_completed: usize,
     pub best_metrics: EvaluationSummary,
     pub layers: Vec<Layer>,
 }
@@ -36,12 +39,13 @@ impl SavedModel {
         random_seeds_per_cycle: usize,
         action_repeat: usize,
         episodes_completed: usize,
+        total_steps_completed: usize,
         best_metrics: EvaluationSummary,
         layers: Vec<Layer>,
     ) -> Self {
         Self {
             model_type: "dqn".to_string(),
-            format_version: 2,
+            format_version: 3,
             input_size: INPUT_SIZE,
             output_size: 9,
             ray_count: RAY_COUNT,
@@ -50,6 +54,7 @@ impl SavedModel {
             random_seeds_per_cycle,
             action_repeat,
             episodes_completed,
+            total_steps_completed,
             best_metrics,
             layers,
         }
