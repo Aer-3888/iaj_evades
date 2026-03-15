@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::VecDeque,
     env,
     fs,
@@ -21,12 +22,23 @@ use crate::{
 
 const EVAL_CPU_FRACTION: f32 = 0.75;
 const MIN_PARALLEL_EVAL_SEEDS: usize = 8;
+const OPTIMIZER_CPU_FRACTION: f32 = 0.75;
+const MIN_PARALLEL_TRAIN_BATCH: usize = 64;
+const FOCUS_SEED_DIVISOR: usize = 4;
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum SeedFocusMode {
+    Original,
+    #[default]
+    BadSeeds,
+}
 
 #[derive(Clone, Debug)]
 pub struct TrainingConfig {
     pub episodes: usize,
     pub trainer_seed: u64,
     pub checkpoint_every: usize,
+    pub seed_focus_mode: SeedFocusMode,
     pub fixed_training_seeds: Vec<u64>,
     pub random_seed_count_per_cycle: usize,
     pub hidden_sizes: Vec<usize>,
@@ -49,6 +61,7 @@ impl Default for TrainingConfig {
             episodes: 6000,
             trainer_seed: 7,
             checkpoint_every: 100,
+            seed_focus_mode: SeedFocusMode::BadSeeds,
             fixed_training_seeds: default_training_seeds(2, 24),
             random_seed_count_per_cycle: 2,
             hidden_sizes: vec![128, 128],
@@ -137,6 +150,7 @@ struct SeedEpisodeSummary {
 struct ProfileStats {
     total_wall: Duration,
     evaluation_runtime_choice: Duration,
+    optimization_runtime_choice: Duration,
     environment_and_policy: Duration,
     optimization: Duration,
     evaluation: Duration,
@@ -179,6 +193,11 @@ impl ProfileStats {
             self.evaluation_runtime_choice.as_secs_f64() * 100.0 / total
         );
         println!(
+            "  optimizer setup benchmark: {:.3}s ({:.1}%)",
+            self.optimization_runtime_choice.as_secs_f64(),
+            self.optimization_runtime_choice.as_secs_f64() * 100.0 / total
+        );
+        println!(
             "  serialization: {:.3}s ({:.1}%)",
             self.serialization.as_secs_f64(),
             self.serialization.as_secs_f64() * 100.0 / total
@@ -208,6 +227,14 @@ impl ProfileStats {
 enum EvaluationRuntime {
     Sequential,
     Parallel { pool: ThreadPool },
+}
+
+enum OptimizationRuntime {
+    Sequential,
+    Parallel {
+        pool: ThreadPool,
+        chunk_size: usize,
+    },
 }
 
 impl EvaluationRuntime {
@@ -268,6 +295,100 @@ impl EvaluationRuntime {
     }
 }
 
+impl OptimizationRuntime {
+    fn choose(
+        network: &Network,
+        target_network: &Network,
+        batch_size: usize,
+        gamma: f32,
+        learning_rate: f32,
+    ) -> anyhow::Result<Self> {
+        let available = thread::available_parallelism()
+            .map(|parallelism| parallelism.get())
+            .unwrap_or(1);
+        let desired_threads = ((available as f32) * OPTIMIZER_CPU_FRACTION)
+            .round()
+            .clamp(1.0, available as f32) as usize;
+
+        if desired_threads <= 1 || batch_size < MIN_PARALLEL_TRAIN_BATCH {
+            println!("optimizer mode: sequential");
+            return Ok(Self::Sequential);
+        }
+
+        let pool = ThreadPoolBuilder::new()
+            .num_threads(desired_threads)
+            .build()
+            .context("failed to build optimizer thread pool")?;
+        let benchmark_batch = build_optimizer_benchmark_batch(batch_size);
+        let chunk_size = benchmark_batch.len().div_ceil(desired_threads * 2).max(1);
+
+        let sequential_benchmark = benchmark_runtime(
+            || {
+                let mut online = network.clone();
+                let _ = online.train_batch(target_network, &benchmark_batch, gamma, learning_rate);
+            },
+            2,
+        );
+        let parallel_benchmark = benchmark_runtime(
+            || {
+                let mut online = network.clone();
+                pool.install(|| {
+                    let _ = online.train_batch_parallel(
+                        target_network,
+                        &benchmark_batch,
+                        gamma,
+                        learning_rate,
+                        chunk_size,
+                    );
+                });
+            },
+            2,
+        );
+
+        if parallel_benchmark < sequential_benchmark {
+            println!(
+                "optimizer mode: parallel with {} threads (seq {:?}, par {:?})",
+                desired_threads, sequential_benchmark, parallel_benchmark
+            );
+            Ok(Self::Parallel {
+                pool,
+                chunk_size,
+            })
+        } else {
+            println!(
+                "optimizer mode: sequential (parallel {:?} was not faster than sequential {:?})",
+                parallel_benchmark, sequential_benchmark
+            );
+            Ok(Self::Sequential)
+        }
+    }
+
+    fn train_batch(
+        &self,
+        online: &mut Network,
+        target_network: &Network,
+        batch: &[Transition],
+        gamma: f32,
+        learning_rate: f32,
+    ) -> f32 {
+        match self {
+            Self::Sequential => online.train_batch(target_network, batch, gamma, learning_rate),
+            Self::Parallel {
+                pool,
+                chunk_size,
+            } => pool.install(|| {
+                online.train_batch_parallel(
+                    target_network,
+                    batch,
+                    gamma,
+                    learning_rate,
+                    *chunk_size,
+                )
+            }),
+        }
+    }
+}
+
 pub fn default_training_seeds(start: u64, count: usize) -> Vec<u64> {
     (start..start + count as u64).collect()
 }
@@ -300,6 +421,15 @@ pub fn train(
     };
     let mut target = online.clone();
     let mut replay = ReplayBuffer::new(config.replay_capacity);
+    let optimizer_runtime_start = Instant::now();
+    let optimization_runtime = OptimizationRuntime::choose(
+        &online,
+        &target,
+        config.batch_size,
+        config.gamma,
+        config.learning_rate,
+    )?;
+    profile_stats.optimization_runtime_choice += optimizer_runtime_start.elapsed();
     let eval_runtime_start = Instant::now();
     let evaluation_runtime =
         EvaluationRuntime::choose(&online, &config.fixed_training_seeds, config.action_repeat)?;
@@ -318,12 +448,14 @@ pub fn train(
         .map(|resume| resume.completed_episodes)
         .unwrap_or(0);
     let mut episode_schedule = Vec::<u64>::new();
+    let mut focus_training_seeds = Vec::<u64>::new();
     let mut cycle_index = 0usize;
 
     for episode in 0..config.episodes {
         if cycle_index >= episode_schedule.len() {
             episode_schedule = episode_seed_cycle(
                 &config.fixed_training_seeds,
+                &focus_training_seeds,
                 config.random_seed_count_per_cycle,
                 &mut rng,
             );
@@ -377,7 +509,13 @@ pub fn train(
                 profile_stats.replay_sampling += sample_start.elapsed();
                 let batch = batch_refs.into_iter().cloned().collect::<Vec<_>>();
                 let train_start = Instant::now();
-                let loss = online.train_batch(&target, &batch, config.gamma, config.learning_rate);
+                let loss = optimization_runtime.train_batch(
+                    &mut online,
+                    &target,
+                    &batch,
+                    config.gamma,
+                    config.learning_rate,
+                );
                 profile_stats.train_batch += train_start.elapsed();
                 profile_stats.optimization += optimize_start.elapsed();
                 profile_stats.train_updates += 1;
@@ -395,16 +533,22 @@ pub fn train(
         }
 
         let eval_start = Instant::now();
-        let eval = evaluate_network(
+        let eval = evaluate_network_with_results(
             &online,
             &config.fixed_training_seeds,
             config.action_repeat,
             &evaluation_runtime,
         );
+        focus_training_seeds = match config.seed_focus_mode {
+            SeedFocusMode::Original => Vec::new(),
+            SeedFocusMode::BadSeeds => {
+                select_focus_training_seeds(&config.fixed_training_seeds, &eval.seed_results)
+            }
+        };
         profile_stats.evaluation += eval_start.elapsed();
         profile_stats.evaluations += 1;
-        if is_better_metrics(&eval, &best_metrics) {
-            best_metrics = eval.clone();
+        if is_better_metrics(&eval.summary, &best_metrics, config.seed_focus_mode) {
+            best_metrics = eval.summary.clone();
             let save_start = Instant::now();
             save_model(
                 output_dir.join("best_model.json"),
@@ -429,7 +573,7 @@ pub fn train(
             losses.iter().sum::<f32>() / losses.len() as f32
         };
         println!(
-            "ep {:>5}  seed {:>10}  steps {:>7}  eps {:>4.2}  return {:>7.2}  survive {:>5.2}s  evades {:>4}  eval_to {:>2}/{}  loss {:>7.4}",
+            "ep {:>5}  seed {:>10}  steps {:>7}  eps {:>4.2}  return {:>7.2}  survive {:>5.2}s  evades {:>4}  eval_to {:>2}/{}  eval_min {:>5.2}s  loss {:>7.4}",
             starting_episode + episode + 1,
             seed,
             total_steps,
@@ -437,8 +581,9 @@ pub fn train(
             episode_return,
             env.elapsed_time,
             episode_evades,
-            eval.timeouts,
+            eval.summary.timeouts,
             config.fixed_training_seeds.len(),
+            eval.summary.min_survival_time,
             mean_loss,
         );
 
@@ -495,11 +640,13 @@ pub fn train(
 
 pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSummary {
     let network = Network::from_layers(model.layers.clone());
-    aggregate_seed_results(&evaluate_seed_batch_sequential(
+    evaluate_network_with_results(
         &network,
         seeds,
         model.action_repeat,
-    ))
+        &EvaluationRuntime::Sequential,
+    )
+    .summary
 }
 
 fn save_model(path: impl AsRef<Path>, model: SavedModel) -> anyhow::Result<()> {
@@ -545,15 +692,53 @@ fn validate_resume_model(
     })
 }
 
-fn episode_seed_cycle(fixed_seeds: &[u64], random_count: usize, rng: &mut impl Rng) -> Vec<u64> {
+fn episode_seed_cycle(
+    fixed_seeds: &[u64],
+    focus_seeds: &[u64],
+    random_count: usize,
+    rng: &mut impl Rng,
+) -> Vec<u64> {
     let mut seeds = fixed_seeds.to_vec();
-    while seeds.len() < fixed_seeds.len() + random_count {
+    seeds.extend(focus_seeds.iter().copied());
+    while seeds.len() < fixed_seeds.len() + focus_seeds.len() + random_count {
         let candidate = rng.gen::<u64>();
         if !seeds.contains(&candidate) {
             seeds.push(candidate);
         }
     }
+    seeds.shuffle(rng);
     seeds
+}
+
+fn build_optimizer_benchmark_batch(batch_size: usize) -> Vec<Transition> {
+    (0..batch_size.max(1))
+        .map(|index| {
+            let seed = index as f32 * 0.013;
+            let mut state = vec![0.0; INPUT_SIZE];
+            let mut next_state = vec![0.0; INPUT_SIZE];
+            for (offset, value) in state.iter_mut().enumerate() {
+                *value = ((offset as f32 * 0.031) + seed).sin();
+            }
+            for (offset, value) in next_state.iter_mut().enumerate() {
+                *value = ((offset as f32 * 0.029) + seed).cos();
+            }
+            Transition {
+                state,
+                action: index % Action::ALL.len(),
+                reward: (index % 7) as f32 * 0.1 - 0.3,
+                next_state,
+                done: index % 11 == 0,
+            }
+        })
+        .collect()
+}
+
+fn benchmark_runtime(mut run_once: impl FnMut(), rounds: usize) -> Duration {
+    let start = Instant::now();
+    for _ in 0..rounds {
+        run_once();
+    }
+    start.elapsed()
 }
 
 fn benchmark_evaluation(
@@ -590,22 +775,61 @@ fn greedy_action(network: &Network, state: &[f32]) -> usize {
         .unwrap_or(0)
 }
 
-fn is_better_metrics(candidate: &EvaluationSummary, best: &EvaluationSummary) -> bool {
-    candidate.timeouts > best.timeouts
-        || (candidate.timeouts == best.timeouts
-            && candidate.average_survival_time > best.average_survival_time)
-        || (candidate.timeouts == best.timeouts
-            && (candidate.average_survival_time - best.average_survival_time).abs() < 1.0e-5
-            && candidate.average_return > best.average_return)
+fn is_better_metrics(
+    candidate: &EvaluationSummary,
+    best: &EvaluationSummary,
+    focus_mode: SeedFocusMode,
+) -> bool {
+    match focus_mode {
+        SeedFocusMode::Original => {
+            candidate.timeouts > best.timeouts
+                || (candidate.timeouts == best.timeouts
+                    && candidate.average_survival_time > best.average_survival_time)
+                || (candidate.timeouts == best.timeouts
+                    && (candidate.average_survival_time - best.average_survival_time).abs()
+                        < 1.0e-5
+                    && candidate.average_return > best.average_return)
+        }
+        SeedFocusMode::BadSeeds => {
+            candidate.timeouts > best.timeouts
+                || (candidate.timeouts == best.timeouts
+                    && candidate.min_survival_time > best.min_survival_time)
+                || (candidate.timeouts == best.timeouts
+                    && (candidate.min_survival_time - best.min_survival_time).abs() < 1.0e-5
+                    && candidate.average_survival_time > best.average_survival_time)
+                || (candidate.timeouts == best.timeouts
+                    && (candidate.min_survival_time - best.min_survival_time).abs() < 1.0e-5
+                    && (candidate.average_survival_time - best.average_survival_time).abs()
+                        < 1.0e-5
+                    && candidate.min_return > best.min_return)
+                || (candidate.timeouts == best.timeouts
+                    && (candidate.min_survival_time - best.min_survival_time).abs() < 1.0e-5
+                    && (candidate.average_survival_time - best.average_survival_time).abs()
+                        < 1.0e-5
+                    && (candidate.min_return - best.min_return).abs() < 1.0e-5
+                    && candidate.average_return > best.average_return)
+        }
+    }
 }
 
-fn evaluate_network(
+#[derive(Clone, Debug)]
+struct EvaluationOutcome {
+    summary: EvaluationSummary,
+    seed_results: Vec<SeedEpisodeSummary>,
+}
+
+fn evaluate_network_with_results(
     network: &Network,
     seeds: &[u64],
     action_repeat: usize,
     runtime: &EvaluationRuntime,
-) -> EvaluationSummary {
-    aggregate_seed_results(&runtime.evaluate_batch(network, seeds, action_repeat))
+) -> EvaluationOutcome {
+    let seed_results = runtime.evaluate_batch(network, seeds, action_repeat);
+    let summary = aggregate_seed_results(&seed_results);
+    EvaluationOutcome {
+        summary,
+        seed_results,
+    }
 }
 
 fn aggregate_seed_results(results: &[SeedEpisodeSummary]) -> EvaluationSummary {
@@ -619,8 +843,43 @@ fn aggregate_seed_results(results: &[SeedEpisodeSummary]) -> EvaluationSummary {
             / count,
         average_return: results.iter().map(|result| result.total_return).sum::<f32>() / count,
         average_evades: results.iter().map(|result| result.evades).sum::<f32>() / count,
+        min_survival_time: results
+            .iter()
+            .map(|result| result.survival_time)
+            .fold(f32::INFINITY, f32::min),
+        min_return: results
+            .iter()
+            .map(|result| result.total_return)
+            .fold(f32::INFINITY, f32::min),
         timeouts: results.iter().filter(|result| result.timed_out).count() as u32,
     }
+}
+
+fn select_focus_training_seeds(seeds: &[u64], results: &[SeedEpisodeSummary]) -> Vec<u64> {
+    if seeds.is_empty() || results.is_empty() {
+        return Vec::new();
+    }
+
+    let focus_count = seeds.len().div_ceil(FOCUS_SEED_DIVISOR).min(results.len());
+    let mut ranked = seeds
+        .iter()
+        .copied()
+        .zip(results.iter().copied())
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| compare_seed_difficulty(&left.1, &right.1));
+    ranked
+        .into_iter()
+        .take(focus_count.max(1))
+        .map(|(seed, _)| seed)
+        .collect()
+}
+
+fn compare_seed_difficulty(left: &SeedEpisodeSummary, right: &SeedEpisodeSummary) -> Ordering {
+    left.timed_out
+        .cmp(&right.timed_out)
+        .then_with(|| left.survival_time.total_cmp(&right.survival_time))
+        .then_with(|| left.total_return.total_cmp(&right.total_return))
+        .then_with(|| left.evades.total_cmp(&right.evades))
 }
 
 fn evaluate_seed_batch_sequential(
@@ -686,9 +945,12 @@ mod tests {
     fn seed_cycle_keeps_fixed_and_adds_random() {
         let fixed = default_training_seeds(2, 24);
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let seeds = episode_seed_cycle(&fixed, 2, &mut rng);
-        assert_eq!(seeds.len(), 26);
-        assert_eq!(&seeds[..24], fixed.as_slice());
+        let focus = vec![fixed[0], fixed[1]];
+        let seeds = episode_seed_cycle(&fixed, &focus, 2, &mut rng);
+        assert_eq!(seeds.len(), 28);
+        assert_eq!(seeds.iter().filter(|&&seed| seed == fixed[0]).count(), 2);
+        assert_eq!(seeds.iter().filter(|&&seed| seed == fixed[1]).count(), 2);
+        assert!(fixed.iter().all(|seed| seeds.contains(seed)));
     }
 
     #[test]
@@ -697,15 +959,104 @@ mod tests {
             average_survival_time: 8.0,
             average_return: 9.0,
             average_evades: 1.0,
+            min_survival_time: 6.0,
+            min_return: 7.0,
             timeouts: 0,
         };
         let candidate = EvaluationSummary {
             average_survival_time: 9.0,
             average_return: 8.0,
             average_evades: 1.0,
+            min_survival_time: 8.5,
+            min_return: 7.5,
             timeouts: 1,
         };
-        assert!(is_better_metrics(&candidate, &best));
+        assert!(is_better_metrics(
+            &candidate,
+            &best,
+            SeedFocusMode::Original
+        ));
+    }
+
+    #[test]
+    fn worst_seed_survival_ranks_above_average_only() {
+        let best = EvaluationSummary {
+            average_survival_time: 10.0,
+            average_return: 11.0,
+            average_evades: 2.0,
+            min_survival_time: 4.0,
+            min_return: 5.0,
+            timeouts: 0,
+        };
+        let candidate = EvaluationSummary {
+            average_survival_time: 9.5,
+            average_return: 10.5,
+            average_evades: 2.0,
+            min_survival_time: 6.0,
+            min_return: 6.0,
+            timeouts: 0,
+        };
+        assert!(is_better_metrics(
+            &candidate,
+            &best,
+            SeedFocusMode::BadSeeds
+        ));
+    }
+
+    #[test]
+    fn original_mode_ignores_worst_seed_if_average_is_lower() {
+        let best = EvaluationSummary {
+            average_survival_time: 10.0,
+            average_return: 11.0,
+            average_evades: 2.0,
+            min_survival_time: 4.0,
+            min_return: 5.0,
+            timeouts: 0,
+        };
+        let candidate = EvaluationSummary {
+            average_survival_time: 9.5,
+            average_return: 10.5,
+            average_evades: 2.0,
+            min_survival_time: 6.0,
+            min_return: 6.0,
+            timeouts: 0,
+        };
+        assert!(!is_better_metrics(
+            &candidate,
+            &best,
+            SeedFocusMode::Original
+        ));
+    }
+
+    #[test]
+    fn focus_seed_selection_prefers_lowest_survival_runs() {
+        let seeds = vec![11, 12, 13, 14];
+        let results = vec![
+            SeedEpisodeSummary {
+                survival_time: 9.0,
+                total_return: 9.0,
+                timed_out: true,
+                ..SeedEpisodeSummary::default()
+            },
+            SeedEpisodeSummary {
+                survival_time: 2.0,
+                total_return: 1.0,
+                ..SeedEpisodeSummary::default()
+            },
+            SeedEpisodeSummary {
+                survival_time: 3.0,
+                total_return: 2.0,
+                ..SeedEpisodeSummary::default()
+            },
+            SeedEpisodeSummary {
+                survival_time: 8.0,
+                total_return: 8.0,
+                timed_out: true,
+                ..SeedEpisodeSummary::default()
+            },
+        ];
+
+        assert_eq!(select_focus_training_seeds(&seeds, &results), vec![12]);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use rand::Rng;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -18,6 +19,43 @@ pub struct Network {
 struct ForwardCache {
     activations: Vec<Vec<f32>>,
     pre_activations: Vec<Vec<f32>>,
+}
+
+#[derive(Clone, Debug)]
+struct BatchGradients {
+    weight_grads: Vec<Vec<f32>>,
+    bias_grads: Vec<Vec<f32>>,
+    total_loss: f32,
+}
+
+impl BatchGradients {
+    fn zero_for(layers: &[Layer]) -> Self {
+        Self {
+            weight_grads: layers
+                .iter()
+                .map(|layer| vec![0.0; layer.weights.len()])
+                .collect(),
+            bias_grads: layers
+                .iter()
+                .map(|layer| vec![0.0; layer.biases.len()])
+                .collect(),
+            total_loss: 0.0,
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        self.total_loss += other.total_loss;
+        for (left, right) in self.weight_grads.iter_mut().zip(other.weight_grads) {
+            for (left_grad, right_grad) in left.iter_mut().zip(right) {
+                *left_grad += right_grad;
+            }
+        }
+        for (left, right) in self.bias_grads.iter_mut().zip(other.bias_grads) {
+            for (left_grad, right_grad) in left.iter_mut().zip(right) {
+                *left_grad += right_grad;
+            }
+        }
+    }
 }
 
 impl Network {
@@ -56,86 +94,138 @@ impl Network {
         gamma: f32,
         learning_rate: f32,
     ) -> f32 {
-        let mut weight_grads = self
-            .layers
-            .iter()
-            .map(|layer| vec![0.0; layer.weights.len()])
-            .collect::<Vec<_>>();
-        let mut bias_grads = self
-            .layers
-            .iter()
-            .map(|layer| vec![0.0; layer.biases.len()])
-            .collect::<Vec<_>>();
-        let mut total_loss = 0.0;
+        let gradients = self.accumulate_batch(target_network, batch, gamma);
+        self.apply_gradients(gradients, batch.len(), learning_rate)
+    }
 
-        for transition in batch {
-            let cache = self.forward(&transition.state);
-            let q_values = cache.activations.last().cloned().unwrap_or_default();
-            let next_q_values = if transition.done {
-                vec![0.0; q_values.len()]
-            } else {
-                target_network.predict(&transition.next_state)
-            };
-            let next_best = next_q_values
-                .into_iter()
-                .fold(f32::NEG_INFINITY, f32::max)
-                .max(0.0);
-            let target = transition.reward
-                + if transition.done {
-                    0.0
-                } else {
-                    gamma * next_best
-                };
-            let prediction = q_values[transition.action];
-            let diff = prediction - target;
-            total_loss += diff * diff;
+    pub fn train_batch_parallel(
+        &mut self,
+        target_network: &Network,
+        batch: &[super::trainer::Transition],
+        gamma: f32,
+        learning_rate: f32,
+        chunk_size: usize,
+    ) -> f32 {
+        let network = &*self;
+        let gradients = batch
+            .par_chunks(chunk_size.max(1))
+            .map(|chunk| network.accumulate_batch(target_network, chunk, gamma))
+            .reduce(
+                || BatchGradients::zero_for(&network.layers),
+                |mut left, right| {
+                    left.merge(right);
+                    left
+                },
+            );
+        self.apply_gradients(gradients, batch.len(), learning_rate)
+    }
 
-            let mut deltas = vec![vec![0.0; q_values.len()]];
-            deltas[0][transition.action] = 2.0 * diff;
-
-            for layer_index in (0..self.layers.len()).rev() {
-                let delta = deltas.pop().unwrap();
-                let activation_input = &cache.activations[layer_index];
-                for out in 0..self.layers[layer_index].output_size {
-                    bias_grads[layer_index][out] += delta[out];
-                    let row = out * self.layers[layer_index].input_size;
-                    for input in 0..self.layers[layer_index].input_size {
-                        weight_grads[layer_index][row + input] +=
-                            delta[out] * activation_input[input];
-                    }
-                }
-
-                if layer_index > 0 {
-                    let mut previous_delta = vec![0.0; self.layers[layer_index].input_size];
-                    for input in 0..self.layers[layer_index].input_size {
-                        let mut sum = 0.0;
-                        for out in 0..self.layers[layer_index].output_size {
-                            let row = out * self.layers[layer_index].input_size;
-                            sum += self.layers[layer_index].weights[row + input] * delta[out];
-                        }
-                        let z = cache.pre_activations[layer_index - 1][input];
-                        previous_delta[input] = if z > 0.0 { sum } else { 0.0 };
-                    }
-                    deltas.push(previous_delta);
-                }
-            }
-        }
-
-        let batch_scale = 1.0 / batch.len().max(1) as f32;
+    fn apply_gradients(
+        &mut self,
+        gradients: BatchGradients,
+        batch_len: usize,
+        learning_rate: f32,
+    ) -> f32 {
+        let batch_scale = 1.0 / batch_len.max(1) as f32;
         for (layer_index, layer) in self.layers.iter_mut().enumerate() {
             for (weight, grad) in layer
                 .weights
                 .iter_mut()
-                .zip(weight_grads[layer_index].iter())
+                .zip(gradients.weight_grads[layer_index].iter())
             {
                 *weight -= learning_rate * grad * batch_scale;
             }
-            for (bias, grad) in layer.biases.iter_mut().zip(bias_grads[layer_index].iter()) {
+            for (bias, grad) in layer
+                .biases
+                .iter_mut()
+                .zip(gradients.bias_grads[layer_index].iter())
+            {
                 *bias -= learning_rate * grad * batch_scale;
             }
         }
 
-        total_loss * batch_scale
+        gradients.total_loss * batch_scale
+    }
+
+    fn accumulate_batch(
+        &self,
+        target_network: &Network,
+        batch: &[super::trainer::Transition],
+        gamma: f32,
+    ) -> BatchGradients {
+        let mut gradients = BatchGradients::zero_for(&self.layers);
+        for transition in batch {
+            gradients.total_loss += self.accumulate_transition(
+                target_network,
+                transition,
+                gamma,
+                &mut gradients.weight_grads,
+                &mut gradients.bias_grads,
+            );
+        }
+        gradients
+    }
+
+    fn accumulate_transition(
+        &self,
+        target_network: &Network,
+        transition: &super::trainer::Transition,
+        gamma: f32,
+        weight_grads: &mut [Vec<f32>],
+        bias_grads: &mut [Vec<f32>],
+    ) -> f32 {
+        let cache = self.forward(&transition.state);
+        let q_values = cache.activations.last().cloned().unwrap_or_default();
+        let next_q_values = if transition.done {
+            vec![0.0; q_values.len()]
+        } else {
+            target_network.predict(&transition.next_state)
+        };
+        let next_best = next_q_values
+            .into_iter()
+            .fold(f32::NEG_INFINITY, f32::max)
+            .max(0.0);
+        let target = transition.reward
+            + if transition.done {
+                0.0
+            } else {
+                gamma * next_best
+            };
+        let prediction = q_values[transition.action];
+        let diff = prediction - target;
+
+        let mut deltas = vec![vec![0.0; q_values.len()]];
+        deltas[0][transition.action] = 2.0 * diff;
+
+        for layer_index in (0..self.layers.len()).rev() {
+            let delta = deltas.pop().unwrap();
+            let activation_input = &cache.activations[layer_index];
+            let layer = &self.layers[layer_index];
+
+            for out in 0..layer.output_size {
+                bias_grads[layer_index][out] += delta[out];
+                let row = out * layer.input_size;
+                for input in 0..layer.input_size {
+                    weight_grads[layer_index][row + input] += delta[out] * activation_input[input];
+                }
+            }
+
+            if layer_index > 0 {
+                let mut previous_delta = vec![0.0; layer.input_size];
+                for input in 0..layer.input_size {
+                    let mut sum = 0.0;
+                    for out in 0..layer.output_size {
+                        let row = out * layer.input_size;
+                        sum += layer.weights[row + input] * delta[out];
+                    }
+                    let z = cache.pre_activations[layer_index - 1][input];
+                    previous_delta[input] = if z > 0.0 { sum } else { 0.0 };
+                }
+                deltas.push(previous_delta);
+            }
+        }
+
+        diff * diff
     }
 
     fn forward(&self, input: &[f32]) -> ForwardCache {

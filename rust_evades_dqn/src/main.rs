@@ -1,12 +1,29 @@
 use std::{fs, path::PathBuf};
 
 use anyhow::Context;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use rust_evades_dqn::{
     model::SavedModel,
-    trainer::{default_training_seeds, evaluate_saved_model, train, TrainingConfig},
+    trainer::{
+        default_training_seeds, evaluate_saved_model, train, SeedFocusMode, TrainingConfig,
+    },
 };
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliSeedFocusMode {
+    Original,
+    BadSeeds,
+}
+
+impl From<CliSeedFocusMode> for SeedFocusMode {
+    fn from(value: CliSeedFocusMode) -> Self {
+        match value {
+            CliSeedFocusMode::Original => SeedFocusMode::Original,
+            CliSeedFocusMode::BadSeeds => SeedFocusMode::BadSeeds,
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(name = "rust_evades_dqn")]
@@ -45,6 +62,9 @@ enum Command {
 
         #[arg(long, default_value_t = 100)]
         checkpoint_every: usize,
+
+        #[arg(long, value_enum, default_value_t = CliSeedFocusMode::BadSeeds)]
+        seed_focus_mode: CliSeedFocusMode,
     },
     Evaluate {
         #[arg(long)]
@@ -72,11 +92,13 @@ fn main() -> anyhow::Result<()> {
             random_seed_count,
             action_repeat,
             checkpoint_every,
+            seed_focus_mode,
         } => {
             let config = TrainingConfig {
                 episodes,
                 trainer_seed,
                 checkpoint_every,
+                seed_focus_mode: seed_focus_mode.into(),
                 fixed_training_seeds: default_training_seeds(seed_start, seed_count),
                 random_seed_count_per_cycle: random_seed_count,
                 action_repeat,
@@ -102,7 +124,15 @@ fn main() -> anyhow::Result<()> {
                 "best avg survival: {:.2}s",
                 result.best_metrics.average_survival_time
             );
+            println!(
+                "best worst-seed survival: {:.2}s",
+                result.best_metrics.min_survival_time
+            );
             println!("best avg return: {:.2}", result.best_metrics.average_return);
+            println!(
+                "best worst-seed return: {:.2}",
+                result.best_metrics.min_return
+            );
             println!("best avg evades: {:.2}", result.best_metrics.average_evades);
             println!("best timeouts: {}", result.best_metrics.timeouts);
             println!(
@@ -124,7 +154,9 @@ fn main() -> anyhow::Result<()> {
                 &default_training_seeds(seed_start, seed_count),
             );
             println!("avg survival: {:.2}s", summary.average_survival_time);
+            println!("worst-seed survival: {:.2}s", summary.min_survival_time);
             println!("avg return: {:.2}", summary.average_return);
+            println!("worst-seed return: {:.2}", summary.min_return);
             println!("avg evades: {:.2}", summary.average_evades);
             println!("timeouts: {}", summary.timeouts);
         }
