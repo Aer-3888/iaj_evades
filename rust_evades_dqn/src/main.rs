@@ -10,7 +10,7 @@ use rust_evades_dqn::{
 
 #[derive(Parser, Debug)]
 #[command(name = "rust_evades_dqn")]
-#[command(about = "DQN trainer for rust_evades; this is the default training path")]
+#[command(about = "DQN trainer for the infinite-space dodge environment")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -37,7 +37,7 @@ enum Command {
         #[arg(long, default_value_t = 2)]
         random_seed_count: usize,
 
-        #[arg(long, default_value_t = 4)]
+        #[arg(long, default_value_t = 2)]
         action_repeat: usize,
 
         #[arg(long, default_value_t = 100)]
@@ -88,11 +88,8 @@ fn main() -> anyhow::Result<()> {
                 result.best_metrics.average_survival_time
             );
             println!("best avg return: {:.2}", result.best_metrics.average_return);
-            println!(
-                "best avg progress: {:.2}",
-                result.best_metrics.average_progress
-            );
-            println!("best wins: {}", result.best_metrics.wins);
+            println!("best avg evades: {:.2}", result.best_metrics.average_evades);
+            println!("best timeouts: {}", result.best_metrics.timeouts);
             println!(
                 "saved final model to {}",
                 output_dir.join("final_model.json").display()
@@ -113,8 +110,8 @@ fn main() -> anyhow::Result<()> {
             );
             println!("avg survival: {:.2}s", summary.average_survival_time);
             println!("avg return: {:.2}", summary.average_return);
-            println!("avg progress: {:.2}", summary.average_progress);
-            println!("wins: {}", summary.wins);
+            println!("avg evades: {:.2}", summary.average_evades);
+            println!("timeouts: {}", summary.timeouts);
         }
     }
 

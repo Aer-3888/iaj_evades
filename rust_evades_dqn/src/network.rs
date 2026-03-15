@@ -174,13 +174,14 @@ impl Network {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::observation::INPUT_SIZE;
     use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 
     #[test]
     fn network_outputs_expected_size() {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let network = Network::new(&[73, 32, 9], &mut rng);
-        let output = network.predict(&vec![0.0; 73]);
+        let network = Network::new(&[INPUT_SIZE, 32, 9], &mut rng);
+        let output = network.predict(&vec![0.0; INPUT_SIZE]);
         assert_eq!(output.len(), 9);
     }
 }

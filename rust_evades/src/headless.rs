@@ -33,22 +33,24 @@ pub struct HeadlessOptions {
 #[derive(Clone, Debug)]
 pub struct HeadlessSummary {
     pub episodes: u32,
-    pub wins: u32,
-    pub deaths: u32,
-    pub average_progress: f32,
-    pub best_progress: f32,
-    pub average_fitness: f32,
+    pub timeouts: u32,
+    pub collisions: u32,
+    pub average_survival_time: f32,
+    pub best_survival_time: f32,
+    pub average_evades: f32,
+    pub average_reward: f32,
     pub last_report: EpisodeReport,
 }
 
 pub fn run_headless(config: GameConfig, options: HeadlessOptions) -> HeadlessSummary {
     let mut state = GameState::new(config, options.seed);
     let mut model = options.model;
-    let mut total_progress = 0.0;
-    let mut total_fitness = 0.0;
-    let mut wins = 0;
-    let mut deaths = 0;
-    let mut best_progress: f32 = 0.0;
+    let mut total_survival = 0.0;
+    let mut total_evades = 0.0;
+    let mut total_reward = 0.0;
+    let mut timeouts = 0;
+    let mut collisions = 0;
+    let mut best_survival_time: f32 = 0.0;
     let mut last_report = state.episode_report();
 
     for _ in 0..options.episodes {
@@ -61,13 +63,14 @@ pub fn run_headless(config: GameConfig, options: HeadlessOptions) -> HeadlessSum
             state.step_fixed(action);
         }
         let report = state.episode_report();
-        total_progress += report.best_progress;
-        total_fitness += report.fitness;
-        best_progress = best_progress.max(report.best_progress);
-        if report.won {
-            wins += 1;
+        total_survival += report.elapsed_time;
+        total_evades += report.enemies_evaded as f32;
+        total_reward += report.total_reward;
+        best_survival_time = best_survival_time.max(report.elapsed_time);
+        if report.survived_full_episode {
+            timeouts += 1;
         } else {
-            deaths += 1;
+            collisions += 1;
         }
         last_report = report;
     }
@@ -75,11 +78,12 @@ pub fn run_headless(config: GameConfig, options: HeadlessOptions) -> HeadlessSum
     let episodes = options.episodes.max(1);
     HeadlessSummary {
         episodes,
-        wins,
-        deaths,
-        average_progress: total_progress / episodes as f32,
-        best_progress,
-        average_fitness: total_fitness / episodes as f32,
+        timeouts,
+        collisions,
+        average_survival_time: total_survival / episodes as f32,
+        best_survival_time,
+        average_evades: total_evades / episodes as f32,
+        average_reward: total_reward / episodes as f32,
         last_report,
     }
 }
@@ -114,7 +118,7 @@ mod tests {
 
         assert_eq!(fast.last_report.done_reason, slow.last_report.done_reason);
         assert_eq!(fast.last_report.elapsed_time, slow.last_report.elapsed_time);
-        assert_eq!(fast.best_progress, slow.best_progress);
-        assert_eq!(fast.average_fitness, slow.average_fitness);
+        assert_eq!(fast.best_survival_time, slow.best_survival_time);
+        assert_eq!(fast.average_reward, slow.average_reward);
     }
 }

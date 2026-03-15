@@ -3,10 +3,7 @@ use std::{collections::VecDeque, fs, path::Path};
 use anyhow::Context;
 use rand::{prelude::*, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use rust_evades::{
-    config::GameConfig,
-    game::{Action, DoneReason, GameState},
-};
+use rust_evades::{config::GameConfig, game::Action, game::GameState};
 
 use crate::{
     model::{EvaluationSummary, SavedModel},
@@ -44,17 +41,17 @@ impl Default for TrainingConfig {
             fixed_training_seeds: default_training_seeds(2, 24),
             random_seed_count_per_cycle: 2,
             hidden_sizes: vec![128, 128],
-            replay_capacity: 200_000,
-            batch_size: 256,
-            warmup_steps: 4_000,
-            train_every: 4,
-            target_sync_interval: 2_000,
-            learning_rate: 0.0005,
-            gamma: 0.995,
+            replay_capacity: 100_000,
+            batch_size: 128,
+            warmup_steps: 2_000,
+            train_every: 2,
+            target_sync_interval: 1_000,
+            learning_rate: 0.0003,
+            gamma: 0.99,
             epsilon_start: 1.0,
-            epsilon_end: 0.05,
-            epsilon_decay_steps: 200_000,
-            action_repeat: 4,
+            epsilon_end: 0.03,
+            epsilon_decay_steps: 120_000,
+            action_repeat: 2,
         }
     }
 }
@@ -146,6 +143,7 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         let mut observation = ObservationBuilder::default();
         observation.reset(&env);
         let mut episode_return = 0.0;
+        let mut episode_evades = 0u32;
         let mut losses = Vec::new();
 
         while !env.done {
@@ -160,13 +158,13 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
                     break;
                 }
                 let result = env.step_fixed(action);
-                if !result.done {
-                    reward += env.config.fixed_timestep;
-                }
+                reward += result.reward;
             }
 
             let next_state = observation.build(&env).to_vec();
             let done = env.done;
+            episode_return += reward;
+            episode_evades = env.enemies_evaded;
             replay.push(Transition {
                 state,
                 action: action_index,
@@ -174,7 +172,6 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
                 next_state,
                 done,
             });
-            episode_return += reward;
             total_steps += 1;
 
             if replay.len() >= config.warmup_steps && total_steps % config.train_every == 0 {
@@ -191,7 +188,7 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
         }
 
         let eval = evaluate_network(&online, &config.fixed_training_seeds, config.action_repeat);
-        if eval.average_survival_time >= best_metrics.average_survival_time {
+        if is_better_metrics(&eval, &best_metrics) {
             best_metrics = eval.clone();
             save_model(
                 output_dir.join("best_model.json"),
@@ -213,15 +210,15 @@ pub fn train(config: TrainingConfig, output_dir: &Path) -> anyhow::Result<Traini
             losses.iter().sum::<f32>() / losses.len() as f32
         };
         println!(
-            "ep {:>5}  seed {:>10}  steps {:>7}  eps {:>4.2}  return {:>6.2}  survive {:>5.2}s  progress {:>7.2}  wins {:>2}/{}  loss {:>7.4}",
+            "ep {:>5}  seed {:>10}  steps {:>7}  eps {:>4.2}  return {:>7.2}  survive {:>5.2}s  evades {:>4}  eval_to {:>2}/{}  loss {:>7.4}",
             episode + 1,
             seed,
             total_steps,
             epsilon_for_step(&config, total_steps),
             episode_return,
-            eval.average_survival_time,
-            eval.average_progress,
-            eval.wins,
+            env.elapsed_time,
+            episode_evades,
+            eval.timeouts,
             config.fixed_training_seeds.len(),
             mean_loss,
         );
@@ -292,21 +289,34 @@ fn select_action(network: &Network, state: &[f32], epsilon: f32, rng: &mut impl 
     if rng.gen::<f32>() < epsilon {
         rng.gen_range(0..Action::ALL.len())
     } else {
-        network
-            .predict(state)
-            .iter()
-            .enumerate()
-            .max_by(|left, right| left.1.total_cmp(right.1))
-            .map(|(index, _)| index)
-            .unwrap_or(0)
+        greedy_action(network, state)
     }
+}
+
+fn greedy_action(network: &Network, state: &[f32]) -> usize {
+    network
+        .predict(state)
+        .iter()
+        .enumerate()
+        .max_by(|left, right| left.1.total_cmp(right.1))
+        .map(|(index, _)| index)
+        .unwrap_or(0)
+}
+
+fn is_better_metrics(candidate: &EvaluationSummary, best: &EvaluationSummary) -> bool {
+    candidate.timeouts > best.timeouts
+        || (candidate.timeouts == best.timeouts
+            && candidate.average_survival_time > best.average_survival_time)
+        || (candidate.timeouts == best.timeouts
+            && (candidate.average_survival_time - best.average_survival_time).abs() < 1.0e-5
+            && candidate.average_return > best.average_return)
 }
 
 fn evaluate_network(network: &Network, seeds: &[u64], action_repeat: usize) -> EvaluationSummary {
     let mut total_return = 0.0;
     let mut total_survival = 0.0;
-    let mut total_progress = 0.0;
-    let mut wins = 0;
+    let mut total_evades = 0.0;
+    let mut timeouts = 0;
 
     for &seed in seeds {
         let mut env = GameState::new(GameConfig::default(), Some(seed));
@@ -316,25 +326,22 @@ fn evaluate_network(network: &Network, seeds: &[u64], action_repeat: usize) -> E
 
         while !env.done {
             let state = observation.build(&env).to_vec();
-            let action =
-                Action::ALL[select_action(network, &state, 0.0, &mut ChaCha8Rng::seed_from_u64(0))];
+            let action = Action::ALL[greedy_action(network, &state)];
             for _ in 0..action_repeat {
                 if env.done {
                     break;
                 }
                 let result = env.step_fixed(action);
-                if !result.done {
-                    episode_return += env.config.fixed_timestep;
-                }
+                episode_return += result.reward;
             }
         }
 
         let report = env.episode_report();
         total_return += episode_return;
         total_survival += report.elapsed_time;
-        total_progress += report.best_progress;
-        if report.done_reason == DoneReason::Goal {
-            wins += 1;
+        total_evades += report.enemies_evaded as f32;
+        if report.survived_full_episode {
+            timeouts += 1;
         }
     }
 
@@ -342,8 +349,8 @@ fn evaluate_network(network: &Network, seeds: &[u64], action_repeat: usize) -> E
     EvaluationSummary {
         average_survival_time: total_survival / count,
         average_return: total_return / count,
-        average_progress: total_progress / count,
-        wins,
+        average_evades: total_evades / count,
+        timeouts,
     }
 }
 
@@ -366,5 +373,22 @@ mod tests {
         let seeds = episode_seed_cycle(&fixed, 2, &mut rng);
         assert_eq!(seeds.len(), 26);
         assert_eq!(&seeds[..24], fixed.as_slice());
+    }
+
+    #[test]
+    fn timeout_heavier_metrics_rank_above_return_only() {
+        let best = EvaluationSummary {
+            average_survival_time: 8.0,
+            average_return: 9.0,
+            average_evades: 1.0,
+            timeouts: 0,
+        };
+        let candidate = EvaluationSummary {
+            average_survival_time: 9.0,
+            average_return: 8.0,
+            average_evades: 1.0,
+            timeouts: 1,
+        };
+        assert!(is_better_metrics(&candidate, &best));
     }
 }

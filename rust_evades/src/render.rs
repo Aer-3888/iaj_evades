@@ -6,16 +6,18 @@ use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 
 use crate::{
     config::{Color, GameConfig},
-    game::{Action, DoneReason, GameState},
+    headless::ControllerMode,
+    game::{Action, DoneReason, GameState, Vec2},
     model_player::ModelController,
 };
 
 pub fn run_window(
     config: GameConfig,
     seed: Option<u64>,
+    controller_mode: ControllerMode,
     mut model: Option<ModelController>,
 ) -> anyhow::Result<()> {
-    if model.is_none() {
+    if matches!(controller_mode, ControllerMode::Model) && model.is_none() {
         anyhow::bail!("`--model <path>` is required for non-headless model playback");
     }
 
@@ -32,7 +34,7 @@ pub fn run_window(
     )
     .context("failed to create window")?;
     let mut buffer = vec![0; config.screen_width * config.screen_height];
-    let mut model_enabled = true;
+    let mut model_enabled = matches!(controller_mode, ControllerMode::Model);
     if let Some(controller) = &mut model {
         controller.reset(&state);
     }
@@ -57,7 +59,11 @@ pub fn run_window(
                         controller.reset(&state);
                     }
                 }
-                Key::B => model_enabled = !model_enabled,
+                Key::B => {
+                    if model.is_some() {
+                        model_enabled = !model_enabled;
+                    }
+                }
                 Key::F3 => show_fps = !show_fps,
                 _ => {}
             }
@@ -77,12 +83,7 @@ pub fn run_window(
             accumulator -= timestep;
 
             if state.done {
-                if model_enabled
-                    || matches!(
-                        state.done_reason,
-                        DoneReason::Collision | DoneReason::Timeout
-                    )
-                {
+                if model_enabled || state.done_reason == DoneReason::Collision {
                     state.reset(None);
                     if let Some(controller) = &mut model {
                         controller.reset(&state);
@@ -103,13 +104,13 @@ pub fn run_window(
             state.step(action, Some(config.fixed_timestep));
         }
 
-        let camera_x = camera_x_for_player(&state, &config);
+        let camera = camera_for_player(&state, &config);
         draw_world(
             &mut buffer,
             &state,
             &config,
-            camera_x,
-            true,
+            camera,
+            model.is_some(),
             model_enabled,
             show_fps,
             displayed_fps,
@@ -147,93 +148,33 @@ fn keyboard_action(window: &Window) -> Action {
     }
 }
 
-fn camera_x_for_player(state: &GameState, config: &GameConfig) -> f32 {
-    let target = state.player.body.pos.x - config.screen_width as f32 * 0.35 + config.camera_lead;
-    target.clamp(0.0, config.world_width - config.screen_width as f32)
+fn camera_for_player(state: &GameState, config: &GameConfig) -> Vec2 {
+    Vec2 {
+        x: state.player.body.pos.x - config.screen_width as f32 * 0.5,
+        y: state.player.body.pos.y - config.screen_height as f32 * 0.5,
+    }
 }
 
 fn draw_world(
     buffer: &mut [u32],
     state: &GameState,
     config: &GameConfig,
-    camera_x: f32,
-    _has_model: bool,
+    camera: Vec2,
+    has_model: bool,
     model_enabled: bool,
     show_fps: bool,
     displayed_fps: f32,
 ) {
     fill(buffer, config.background_color.to_u32());
-    draw_rect(
-        buffer,
-        config.screen_width,
-        config.screen_height,
-        0,
-        config.corridor_top as i32,
-        config.screen_width as i32,
-        config.corridor_height() as i32,
-        config.corridor_color.to_u32(),
-    );
-    draw_rect(
-        buffer,
-        config.screen_width,
-        config.screen_height,
-        0,
-        config.corridor_top as i32,
-        config.screen_width as i32,
-        3,
-        config.corridor_line_color.to_u32(),
-    );
-    draw_rect(
-        buffer,
-        config.screen_width,
-        config.screen_height,
-        0,
-        config.corridor_bottom as i32 - 3,
-        config.screen_width as i32,
-        3,
-        config.corridor_line_color.to_u32(),
-    );
-
-    let marker_spacing = 180;
-    let marker_width = 70;
-    let marker_height = 8;
-    let marker_y =
-        config.corridor_top as i32 + config.corridor_height() as i32 / 2 - marker_height / 2;
-    let first_marker = ((camera_x as i32 / marker_spacing) * marker_spacing) - marker_spacing;
-    let end_marker = camera_x as i32 + config.screen_width as i32 + marker_spacing;
-    let mut world_x = first_marker;
-    while world_x <= end_marker {
-        let screen_x = world_x - camera_x as i32;
-        draw_rect(
-            buffer,
-            config.screen_width,
-            config.screen_height,
-            screen_x,
-            marker_y,
-            marker_width,
-            marker_height,
-            config.lane_marker_color.to_u32(),
-        );
-        world_x += marker_spacing;
-    }
-
-    let goal_screen_x = (config.goal_x() - camera_x) as i32;
-    draw_rect(
-        buffer,
-        config.screen_width,
-        config.screen_height,
-        goal_screen_x,
-        config.corridor_top as i32,
-        config.goal_width as i32,
-        config.corridor_height() as i32,
-        config.goal_color.to_u32(),
-    );
+    draw_grid(buffer, config, camera);
 
     for enemy in &state.enemies {
-        let x = (enemy.body.pos.x - camera_x) as i32;
-        let y = enemy.body.pos.y as i32;
+        let x = (enemy.body.pos.x - camera.x) as i32;
+        let y = (enemy.body.pos.y - camera.y) as i32;
         if x + enemy.body.radius as i32 >= 0
             && x - (enemy.body.radius as i32) < config.screen_width as i32
+            && y + enemy.body.radius as i32 >= 0
+            && y - (enemy.body.radius as i32) < config.screen_height as i32
         {
             draw_circle(
                 buffer,
@@ -251,19 +192,21 @@ fn draw_world(
         buffer,
         config.screen_width,
         config.screen_height,
-        (state.player.body.pos.x - camera_x) as i32,
-        state.player.body.pos.y as i32,
+        (state.player.body.pos.x - camera.x) as i32,
+        (state.player.body.pos.y - camera.y) as i32,
         state.player.body.radius as i32,
         config.player_color.to_u32(),
     );
 
-    let goal_total = config.goal_x() - config.start_margin;
     draw_text(
         buffer,
         config,
         20,
         18,
-        &format!("PROGRESS {:.0}/{:.0}", state.best_progress(), goal_total),
+        &format!(
+            "TIME {:.2}/{:.0}",
+            state.elapsed_time, state.config.max_episode_time
+        ),
         config.text_color,
     );
     draw_text(
@@ -271,7 +214,7 @@ fn draw_world(
         config,
         20,
         46,
-        &format!("DEATHS {}", state.total_deaths),
+        &format!("EVADES {}", state.enemies_evaded),
         config.text_color,
     );
     draw_text(
@@ -279,7 +222,7 @@ fn draw_world(
         config,
         220,
         18,
-        &format!("BEST {:.0}", state.best_progress_ever),
+        &format!("BEST {:.2}s", state.best_survival_ever),
         config.text_color,
     );
     draw_text(
@@ -287,6 +230,14 @@ fn draw_world(
         config,
         220,
         46,
+        &format!("ACTIVE {}", state.enemies.len()),
+        config.text_color,
+    );
+    draw_text(
+        buffer,
+        config,
+        420,
+        18,
         &format!("SEED {}", state.base_seed),
         config.text_color,
     );
@@ -305,8 +256,10 @@ fn draw_world(
         18,
         if model_enabled {
             "MODE MODEL"
-        } else {
+        } else if has_model {
             "MODE MANUAL"
+        } else {
+            "MODE MANUAL ONLY"
         },
         config.warning_color,
     );
@@ -321,14 +274,54 @@ fn draw_world(
         );
     }
 
-    if state.done && state.done_reason == DoneReason::Goal {
-        draw_text_centered(
+    if state.done {
+        let message = match state.done_reason {
+            DoneReason::Collision => "HIT - PRESS R TO TRY AGAIN",
+            DoneReason::Timeout => "SURVIVED FULL TIMER - PRESS R TO RUN AGAIN",
+            DoneReason::None => "",
+        };
+        if !message.is_empty() {
+            draw_text_centered(buffer, config, 28, message, config.warning_color);
+        }
+    }
+}
+
+fn draw_grid(buffer: &mut [u32], config: &GameConfig, camera: Vec2) {
+    let spacing = config.grid_spacing.max(8.0) as i32;
+    let width = config.screen_width as i32;
+    let height = config.screen_height as i32;
+    let offset_x = ((camera.x.floor() as i32) % spacing + spacing) % spacing;
+    let offset_y = ((camera.y.floor() as i32) % spacing + spacing) % spacing;
+    let color = config.grid_color.to_u32();
+
+    let mut x = -offset_x;
+    while x < width {
+        draw_rect(
             buffer,
-            config,
-            28,
-            "GOAL REACHED - PRESS R TO RUN AGAIN",
-            config.warning_color,
+            config.screen_width,
+            config.screen_height,
+            x,
+            0,
+            1,
+            height,
+            color,
         );
+        x += spacing;
+    }
+
+    let mut y = -offset_y;
+    while y < height {
+        draw_rect(
+            buffer,
+            config.screen_width,
+            config.screen_height,
+            0,
+            y,
+            width,
+            1,
+            color,
+        );
+        y += spacing;
     }
 }
 

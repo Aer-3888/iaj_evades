@@ -1,20 +1,20 @@
-use rust_evades::game::GameState;
+use crate::game::{GameState, Vec2};
 
 pub const RAY_COUNT: usize = 36;
-pub const INPUT_SIZE: usize = RAY_COUNT * 2 + 1;
+pub const INPUT_SIZE: usize = RAY_COUNT * 2 + 2;
 
 #[derive(Clone, Debug)]
 pub struct ObservationBuilder {
     previous_rays: [f32; RAY_COUNT],
-    previous_x: f32,
+    previous_position: Vec2,
     initialized: bool,
 }
 
 impl Default for ObservationBuilder {
     fn default() -> Self {
         Self {
-            previous_rays: [0.0; RAY_COUNT],
-            previous_x: 0.0,
+            previous_rays: [1.0; RAY_COUNT],
+            previous_position: Vec2::default(),
             initialized: false,
         }
     }
@@ -23,7 +23,7 @@ impl Default for ObservationBuilder {
 impl ObservationBuilder {
     pub fn reset(&mut self, state: &GameState) {
         self.previous_rays = sample_rays(state);
-        self.previous_x = state.player.body.pos.x;
+        self.previous_position = state.player.body.pos;
         self.initialized = true;
     }
 
@@ -41,32 +41,36 @@ impl ObservationBuilder {
         }
 
         let max_step = state.config.player_speed * state.config.fixed_timestep;
+        let delta_x = state.player.body.pos.x - self.previous_position.x;
+        let delta_y = state.player.body.pos.y - self.previous_position.y;
+        observation[INPUT_SIZE - 2] = if max_step > 0.0 {
+            (delta_x / max_step).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
         observation[INPUT_SIZE - 1] = if max_step > 0.0 {
-            ((state.player.body.pos.x - self.previous_x) / max_step).clamp(-1.0, 1.0)
+            (delta_y / max_step).clamp(-1.0, 1.0)
         } else {
             0.0
         };
 
         self.previous_rays = rays;
-        self.previous_x = state.player.body.pos.x;
+        self.previous_position = state.player.body.pos;
         observation
     }
 }
 
 pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
-    let mut samples = [0.0; RAY_COUNT];
+    let mut samples = [1.0; RAY_COUNT];
     let origin_x = state.player.body.pos.x;
     let origin_y = state.player.body.pos.y;
-    let max_distance = (state.config.world_width.powi(2) + state.config.corridor_height().powi(2))
-        .sqrt()
-        .max(1.0);
+    let max_distance = state.config.ray_length().max(1.0);
 
     for (index, sample) in samples.iter_mut().enumerate() {
         let angle = (index as f32) * 10.0_f32.to_radians();
         let dir_x = angle.cos();
         let dir_y = -angle.sin();
 
-        let wall_distance = raycast_wall_distance(state, origin_x, origin_y, dir_x, dir_y);
         let enemy_distance = state
             .enemies
             .iter()
@@ -83,41 +87,15 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
             })
             .fold(f32::INFINITY, f32::min);
 
-        let hit_distance = wall_distance.min(enemy_distance);
-        let clearance = (hit_distance - state.player.body.radius).max(0.0);
-        *sample = (clearance / max_distance).clamp(0.0, 1.0);
+        let clearance = (enemy_distance - state.player.body.radius).clamp(0.0, max_distance);
+        *sample = if enemy_distance.is_finite() {
+            (clearance / max_distance).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
     }
 
     samples
-}
-
-fn raycast_wall_distance(
-    state: &GameState,
-    origin_x: f32,
-    origin_y: f32,
-    dir_x: f32,
-    dir_y: f32,
-) -> f32 {
-    let mut best = f32::INFINITY;
-    let epsilon = 1.0e-6;
-
-    if dir_x.abs() > epsilon {
-        if dir_x > 0.0 {
-            best = best.min((state.config.world_width - origin_x) / dir_x);
-        } else {
-            best = best.min((0.0 - origin_x) / dir_x);
-        }
-    }
-
-    if dir_y.abs() > epsilon {
-        if dir_y > 0.0 {
-            best = best.min((state.config.corridor_bottom - origin_y) / dir_y);
-        } else {
-            best = best.min((state.config.corridor_top - origin_y) / dir_y);
-        }
-    }
-
-    best.max(0.0)
 }
 
 fn raycast_circle_distance(
@@ -153,8 +131,14 @@ fn raycast_circle_distance(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rust_evades::config::GameConfig;
-    use rust_evades::game::GameState;
+    use crate::{
+        config::GameConfig,
+        game::{CircleBody, Enemy, GameState},
+    };
+
+    fn approx_eq(left: f32, right: f32) {
+        assert!((left - right).abs() < 1.0e-4, "{left} != {right}");
+    }
 
     #[test]
     fn observation_has_expected_size() {
@@ -165,13 +149,39 @@ mod tests {
     }
 
     #[test]
-    fn reset_zeroes_delta_channels() {
-        let state = GameState::new(GameConfig::default(), Some(2));
-        let mut builder = ObservationBuilder::default();
-        builder.reset(&state);
-        let observation = builder.build(&state);
-        assert!(observation[RAY_COUNT..INPUT_SIZE]
-            .iter()
-            .all(|value| value.abs() < 1.0e-6));
+    fn ray_is_zero_when_enemy_overlaps_player() {
+        let mut state = GameState::new(GameConfig::default(), Some(2));
+        state.enemies.clear();
+        state.enemies.push(Enemy {
+            body: CircleBody {
+                pos: state.player.body.pos,
+                vel: Vec2::default(),
+                radius: state.config.enemy_radius,
+            },
+            remaining_life: 1.0,
+        });
+
+        let rays = sample_rays(&state);
+        approx_eq(rays[0], 0.0);
+    }
+
+    #[test]
+    fn ray_is_one_when_enemy_is_outside_range() {
+        let mut state = GameState::new(GameConfig::default(), Some(2));
+        state.enemies.clear();
+        state.enemies.push(Enemy {
+            body: CircleBody {
+                pos: Vec2 {
+                    x: state.config.ray_length() * 4.0,
+                    y: 0.0,
+                },
+                vel: Vec2::default(),
+                radius: state.config.enemy_radius,
+            },
+            remaining_life: 1.0,
+        });
+
+        let rays = sample_rays(&state);
+        approx_eq(rays[0], 1.0);
     }
 }

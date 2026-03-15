@@ -35,7 +35,7 @@ struct Cli {
     #[arg(long)]
     seed: Option<u64>,
 
-    #[arg(long, help = "Path to a trained DQN or NEAT model JSON for gameplay")]
+    #[arg(long, help = "Path to a trained DQN model JSON for gameplay")]
     model: Option<String>,
 
     #[arg(long, value_enum, default_value_t = CliController::Model)]
@@ -67,19 +67,20 @@ fn main() -> anyhow::Result<()> {
         );
 
         println!("headless episodes: {}", summary.episodes);
-        println!("wins: {}", summary.wins);
-        println!("deaths: {}", summary.deaths);
-        println!("avg progress: {:.2}", summary.average_progress);
-        println!("best progress: {:.2}", summary.best_progress);
-        println!("avg fitness: {:.2}", summary.average_fitness);
+        println!("timeouts: {}", summary.timeouts);
+        println!("collisions: {}", summary.collisions);
+        println!("avg survival: {:.2}s", summary.average_survival_time);
+        println!("best survival: {:.2}s", summary.best_survival_time);
+        println!("avg evades: {:.2}", summary.average_evades);
+        println!("avg reward: {:.2}", summary.average_reward);
         println!(
-            "last result: {} after {:.2}s ({:.1}%)",
+            "last result: {} after {:.2}s with {} evades",
             summary.last_report.done_reason.as_str(),
             summary.last_report.elapsed_time,
-            summary.last_report.progress_ratio * 100.0
+            summary.last_report.enemies_evaded
         );
         return Ok(());
     }
 
-    run_window(config, cli.seed, model)
+    run_window(config, cli.seed, cli.controller.into(), model)
 }
