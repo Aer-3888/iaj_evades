@@ -22,6 +22,9 @@ enum Command {
         #[arg(long, default_value = "training_runs/dqn_default")]
         output_dir: PathBuf,
 
+        #[arg(long, help = "Resume training from an existing saved DQN model JSON")]
+        resume_model: Option<PathBuf>,
+
         #[arg(long, default_value_t = 6000)]
         episodes: usize,
 
@@ -61,6 +64,7 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Train {
             output_dir,
+            resume_model,
             episodes,
             trainer_seed,
             seed_start,
@@ -78,7 +82,18 @@ fn main() -> anyhow::Result<()> {
                 action_repeat,
                 ..TrainingConfig::default()
             };
-            let result = train(config, &output_dir)?;
+            let resume_model = match resume_model {
+                Some(path) => {
+                    let json = fs::read_to_string(&path)
+                        .with_context(|| format!("failed to read {}", path.display()))?;
+                    Some(
+                        serde_json::from_str(&json)
+                            .with_context(|| format!("failed to parse {}", path.display()))?,
+                    )
+                }
+                None => None,
+            };
+            let result = train(config, &output_dir, resume_model)?;
             println!(
                 "training complete after {} episodes",
                 result.completed_episodes
