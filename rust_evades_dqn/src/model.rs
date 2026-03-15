@@ -11,6 +11,8 @@ pub struct EvaluationSummary {
     pub average_survival_time: f32,
     pub average_return: f32,
     pub average_evades: f32,
+    pub min_survival_time: f32,
+    pub min_return: f32,
     pub timeouts: u32,
 }
 
@@ -45,7 +47,7 @@ impl SavedModel {
     ) -> Self {
         Self {
             model_type: "dqn".to_string(),
-            format_version: 3,
+            format_version: 4,
             input_size: INPUT_SIZE,
             output_size: 9,
             ray_count: RAY_COUNT,
