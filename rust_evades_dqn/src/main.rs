@@ -42,7 +42,7 @@ enum Command {
         #[arg(long, help = "Resume training from an existing saved DQN model JSON")]
         resume_model: Option<PathBuf>,
 
-        #[arg(long, default_value_t = 6000)]
+        #[arg(long, default_value_t = 500000)]
         episodes: usize,
 
         #[arg(long, default_value_t = 7)]
