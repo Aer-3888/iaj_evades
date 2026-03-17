@@ -58,7 +58,7 @@ pub struct TrainingConfig {
 impl Default for TrainingConfig {
     fn default() -> Self {
         Self {
-            episodes: 6000,
+            episodes: 500000,
             trainer_seed: 7,
             checkpoint_every: 100,
             seed_focus_mode: SeedFocusMode::BadSeeds,

@@ -3,6 +3,8 @@ use rand_chacha::ChaCha8Rng;
 
 use crate::config::GameConfig;
 
+const RIGHTWARD_FITNESS_BONUS_PER_UNIT: f32 = 1.0;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     Idle,
@@ -237,6 +239,7 @@ impl GameState {
         }
 
         let delta = dt.unwrap_or(self.config.fixed_timestep);
+        let prev_x = self.player.body.pos.x;
         self.player
             .apply_action(action, self.config.player_speed, delta);
         self.elapsed_time += delta;
@@ -246,7 +249,9 @@ impl GameState {
         }
         self.spawn_enemies(delta);
 
-        let mut reward = self.config.survival_reward_per_second * delta;
+        let dx = self.player.body.pos.x - prev_x;
+        let mut reward = self.config.survival_reward_per_second * delta
+            + dx.max(0.0) * self.config.rightward_reward_per_unit;
 
         if self.collided() {
             self.done = true;
@@ -283,7 +288,7 @@ impl GameState {
     }
 
     pub fn fitness(&self) -> f32 {
-        self.episode_return
+        self.episode_return + self.player.body.pos.x.max(0.0) * RIGHTWARD_FITNESS_BONUS_PER_UNIT
     }
 
     pub fn episode_report(&self) -> EpisodeReport {
@@ -370,7 +375,10 @@ impl GameState {
     }
 
     fn local_enemy_density(&self, point: Vec2) -> f32 {
-        let probe_radius = self.config.enemy_spawn_density_probe_radius.max(self.config.enemy_radius);
+        let probe_radius = self
+            .config
+            .enemy_spawn_density_probe_radius
+            .max(self.config.enemy_radius);
         let probe_radius_sq = probe_radius * probe_radius;
 
         self.enemies
@@ -584,6 +592,34 @@ mod tests {
         assert!(!result.done);
         assert_eq!(state.enemies_evaded, 1);
         assert!(result.reward > state.config.fixed_timestep);
+    }
+
+    #[test]
+    fn rightward_reward_uses_config_value() {
+        let mut config = GameConfig::default();
+        config.survival_reward_per_second = 0.0;
+        config.rightward_reward_per_unit = 0.5;
+        let mut state = GameState::new(config, Some(1));
+
+        let result = state.step_fixed(Action::Right);
+
+        let expected_dx = state.config.player_speed * state.config.fixed_timestep;
+        approx_eq(
+            result.reward,
+            expected_dx * state.config.rightward_reward_per_unit,
+        );
+    }
+
+    #[test]
+    fn fitness_uses_final_rightward_position_bonus() {
+        let mut state = GameState::new(GameConfig::default(), Some(1));
+
+        state.step_fixed(Action::Right);
+        state.step_fixed(Action::Left);
+
+        approx_eq(state.player.body.pos.x, 0.0);
+
+        approx_eq(state.fitness(), state.episode_return);
     }
 
     fn enemy_at(x: f32, y: f32) -> Enemy {
