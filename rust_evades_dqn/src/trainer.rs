@@ -657,22 +657,31 @@ pub fn train(
 
         if (episode + 1) % config.checkpoint_every == 0 {
             let save_start = Instant::now();
+            let saved_model = SavedModel::new(
+                config.hidden_sizes.clone(),
+                config.fixed_training_seeds.clone(),
+                config.random_seed_count_per_cycle,
+                config.action_repeat,
+                starting_episode + episode + 1,
+                total_steps,
+                best_metrics.clone(),
+                online.layers.clone(),
+            );
+
             save_model(
                 output_dir.join(format!(
                     "checkpoint_ep_{:05}.json",
                     starting_episode + episode + 1
                 )),
-                SavedModel::new(
-                    config.hidden_sizes.clone(),
-                    config.fixed_training_seeds.clone(),
-                    config.random_seed_count_per_cycle,
-                    config.action_repeat,
-                    starting_episode + episode + 1,
-                    total_steps,
-                    best_metrics.clone(),
-                    online.layers.clone(),
-                ),
+                saved_model.clone(),
             )?;
+
+            // Also save as 'latest_model.json' for easier dashboard reference
+            let _ = save_model(
+                output_dir.join("latest_model.json"),
+                saved_model,
+            );
+
             profile_stats.serialization += save_start.elapsed();
             profile_stats.saves += 1;
         }
