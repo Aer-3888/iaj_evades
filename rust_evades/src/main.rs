@@ -1,11 +1,26 @@
 use clap::{Parser, ValueEnum};
 
 use rust_evades::{
-    config::GameConfig,
+    config::{GameConfig, MapDesign},
     headless::{run_headless, ControllerMode, HeadlessOptions},
     model_player::ModelController,
     render::run_window,
 };
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliMapDesign {
+    Open,
+    Closed,
+}
+
+impl From<CliMapDesign> for MapDesign {
+    fn from(value: CliMapDesign) -> Self {
+        match value {
+            CliMapDesign::Open => MapDesign::Open,
+            CliMapDesign::Closed => MapDesign::Closed,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum CliController {
@@ -40,11 +55,16 @@ struct Cli {
 
     #[arg(long, value_enum, default_value_t = CliController::Model)]
     controller: CliController,
+
+    #[arg(long, value_enum, default_value_t = CliMapDesign::Open)]
+    map_design: CliMapDesign,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    let config = GameConfig::default();
+    let mut config = GameConfig::default();
+    config.map_design = cli.map_design.into();
+
     let model = cli
         .model
         .as_deref()

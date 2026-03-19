@@ -115,7 +115,7 @@ fn main() -> anyhow::Result<()> {
                 }
                 None => None,
             };
-            let result = train(config, &output_dir, resume_model)?;
+            let result = train(config, &output_dir, resume_model, None, None)?;
             println!(
                 "training complete after {} episodes",
                 result.completed_episodes

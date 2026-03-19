@@ -5,7 +5,7 @@ use font8x8::{UnicodeFonts, BASIC_FONTS};
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 
 use crate::{
-    config::{Color, GameConfig},
+    config::{Color, GameConfig, MapDesign},
     headless::ControllerMode,
     game::{Action, DoneReason, GameState, Vec2},
     model_player::ModelController,
@@ -83,7 +83,7 @@ pub fn run_window(
             accumulator -= timestep;
 
             if state.done {
-                if model_enabled || state.done_reason == DoneReason::Collision {
+                if model_enabled || matches!(state.done_reason, DoneReason::Collision | DoneReason::Timeout) {
                     state.reset(None);
                     if let Some(controller) = &mut model {
                         controller.reset(&state);
@@ -149,9 +149,17 @@ fn keyboard_action(window: &Window) -> Action {
 }
 
 fn camera_for_player(state: &GameState, config: &GameConfig) -> Vec2 {
-    Vec2 {
-        x: state.player.body.pos.x - config.screen_width as f32 * 0.5,
-        y: state.player.body.pos.y - config.screen_height as f32 * 0.5,
+    if config.map_design == MapDesign::Open {
+        Vec2 {
+            x: state.player.body.pos.x - config.screen_width as f32 * 0.5,
+            y: state.player.body.pos.y - config.screen_height as f32 * 0.5,
+        }
+    } else {
+        let target = state.player.body.pos.x - config.screen_width as f32 * 0.35 + config.camera_lead;
+        Vec2 {
+            x: target.clamp(0.0, config.world_width - config.screen_width as f32),
+            y: 0.0,
+        }
     }
 }
 
@@ -166,7 +174,76 @@ fn draw_world(
     displayed_fps: f32,
 ) {
     fill(buffer, config.background_color.to_u32());
-    draw_grid(buffer, config, camera);
+    
+    if config.map_design == MapDesign::Open {
+        draw_grid(buffer, config, camera);
+    } else {
+        // Draw Closed map (corridor)
+        draw_rect(
+            buffer,
+            config.screen_width,
+            config.screen_height,
+            0,
+            config.corridor_top as i32,
+            config.screen_width as i32,
+            config.corridor_height() as i32,
+            config.corridor_color.to_u32(),
+        );
+        draw_rect(
+            buffer,
+            config.screen_width,
+            config.screen_height,
+            0,
+            config.corridor_top as i32,
+            config.screen_width as i32,
+            3,
+            config.corridor_line_color.to_u32(),
+        );
+        draw_rect(
+            buffer,
+            config.screen_width,
+            config.screen_height,
+            0,
+            config.corridor_bottom as i32 - 3,
+            config.screen_width as i32,
+            3,
+            config.corridor_line_color.to_u32(),
+        );
+
+        let marker_spacing = 180;
+        let marker_width = 70;
+        let marker_height = 8;
+        let marker_y = config.corridor_top as i32 + config.corridor_height() as i32 / 2 - marker_height / 2;
+        let first_marker = ((camera.x as i32 / marker_spacing) * marker_spacing) - marker_spacing;
+        let end_marker = camera.x as i32 + config.screen_width as i32 + marker_spacing;
+        let mut world_x = first_marker;
+        while world_x <= end_marker {
+            let screen_x = world_x - camera.x as i32;
+            draw_rect(
+                buffer,
+                config.screen_width,
+                config.screen_height,
+                screen_x,
+                marker_y,
+                marker_width,
+                marker_height,
+                config.lane_marker_color.to_u32(),
+            );
+            world_x += marker_spacing;
+        }
+
+        let goal_screen_x = (config.goal_x() - camera.x) as i32;
+        draw_rect(
+            buffer,
+            config.screen_width,
+            config.screen_height,
+            goal_screen_x,
+            config.corridor_top as i32,
+            config.goal_width as i32,
+            config.corridor_height() as i32,
+            config.goal_color.to_u32(),
+        );
+    }
 
     for enemy in &state.enemies {
         let x = (enemy.body.pos.x - camera.x) as i32;
@@ -198,49 +275,86 @@ fn draw_world(
         config.player_color.to_u32(),
     );
 
-    draw_text(
-        buffer,
-        config,
-        20,
-        18,
-        &format!(
-            "TIME {:.2}/{:.0}",
-            state.elapsed_time, state.config.max_episode_time
-        ),
-        config.text_color,
-    );
-    draw_text(
-        buffer,
-        config,
-        20,
-        46,
-        &format!("EVADES {}", state.enemies_evaded),
-        config.text_color,
-    );
-    draw_text(
-        buffer,
-        config,
-        220,
-        18,
-        &format!("BEST {:.2}s", state.best_survival_ever),
-        config.text_color,
-    );
-    draw_text(
-        buffer,
-        config,
-        220,
-        46,
-        &format!("ACTIVE {}", state.enemies.len()),
-        config.text_color,
-    );
-    draw_text(
-        buffer,
-        config,
-        420,
-        18,
-        &format!("SEED {}", state.base_seed),
-        config.text_color,
-    );
+    if config.map_design == MapDesign::Open {
+        draw_text(
+            buffer,
+            config,
+            20,
+            18,
+            &format!(
+                "TIME {:.2}/{:.0}",
+                state.elapsed_time, state.config.max_episode_time
+            ),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            20,
+            46,
+            &format!("EVADES {}", state.enemies_evaded),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            220,
+            18,
+            &format!("BEST {:.2}s", state.best_survival_ever),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            220,
+            46,
+            &format!("ACTIVE {}", state.enemies.len()),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            420,
+            18,
+            &format!("SEED {}", state.base_seed),
+            config.text_color,
+        );
+    } else {
+        let goal_total = config.goal_x() - config.start_margin;
+        draw_text(
+            buffer,
+            config,
+            20,
+            18,
+            &format!("PROGRESS {:.0}/{:.0}", state.best_progress(), goal_total),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            20,
+            46,
+            &format!("DEATHS {}", state.total_deaths),
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            220,
+            18,
+            &format!("BEST {:.0}", state.best_survival_ever), // Reusing best_survival_ever for best_progress or just leaving it
+            config.text_color,
+        );
+        draw_text(
+            buffer,
+            config,
+            220,
+            46,
+            &format!("SEED {}", state.base_seed),
+            config.text_color,
+        );
+    }
+
     draw_text(
         buffer,
         config,
@@ -277,7 +391,14 @@ fn draw_world(
     if state.done {
         let message = match state.done_reason {
             DoneReason::Collision => "HIT - PRESS R TO TRY AGAIN",
-            DoneReason::Timeout => "SURVIVED FULL TIMER - PRESS R TO RUN AGAIN",
+            DoneReason::Timeout => {
+                if config.map_design == MapDesign::Open {
+                    "SURVIVED FULL TIMER - PRESS R TO RUN AGAIN"
+                } else {
+                    "TIMEOUT - PRESS R TO TRY AGAIN"
+                }
+            },
+            DoneReason::Goal => "GOAL REACHED - PRESS R TO RUN AGAIN",
             DoneReason::None => "",
         };
         if !message.is_empty() {
