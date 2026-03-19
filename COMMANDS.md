@@ -49,3 +49,21 @@ Evaluation now prints average and worst-seed survival/return metrics.
 ```bash
 cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- evaluate --model training_runs/dqn_default/final_model.json
 ```
+
+## Run Web Dashboard (Live Visualizer & Training Control)
+
+The dashboard allows you to change game settings, start/stop DQN training sessions, and view the game in real-time.
+
+```bash
+# Build frontend (once)
+cd rust_evades_web/frontend && npm install && npm run build
+
+# Run dashboard server from the web directory
+cd ../ && cargo run --release
+```
+Open `http://localhost:8080` in your browser once you see the `listening on 0.0.0.0:8080` log.
+
+## Run game with best model
+```bash
+cargo run --release --manifest-path rust_evades/Cargo.toml -- --controller model --model best_model.json
+```

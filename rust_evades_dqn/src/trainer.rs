@@ -4,6 +4,7 @@ use std::{
     env,
     fs,
     path::Path,
+    sync::{Arc, atomic::{AtomicBool, Ordering as AtomicOrdering}},
     thread,
     time::{Duration, Instant},
 };
@@ -13,6 +14,8 @@ use rand::{prelude::*, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rayon::{prelude::*, ThreadPool, ThreadPoolBuilder};
 use rust_evades::{config::GameConfig, game::Action, game::GameState};
+use serde::Serialize;
+use tokio::sync::mpsc;
 
 use crate::{
     model::{EvaluationSummary, SavedModel},
@@ -393,10 +396,31 @@ pub fn default_training_seeds(start: u64, count: usize) -> Vec<u64> {
     (start..start + count as u64).collect()
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct TrainingProgress {
+    pub episode: usize,
+    pub total_steps: usize,
+    pub epsilon: f32,
+    pub last_return: f32,
+    pub last_survival: f32,
+    pub last_evades: u32,
+    pub avg_survival: f32,
+    pub global_best_survival: f32,
+    pub min_survival: f32,
+    pub avg_return: f32,
+    pub avg_evades: f32,
+    pub min_return: f32,
+    pub timeouts: u32,
+    pub loss: f32,
+    pub steps_per_second: f32,
+}
+
 pub fn train(
     config: TrainingConfig,
     output_dir: &Path,
     resume_model: Option<SavedModel>,
+    progress_tx: Option<mpsc::UnboundedSender<TrainingProgress>>,
+    stop_signal: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<TrainingResult> {
     let profile_enabled = env::var("DQN_PROFILE")
         .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
@@ -450,8 +474,19 @@ pub fn train(
     let mut episode_schedule = Vec::<u64>::new();
     let mut focus_training_seeds = Vec::<u64>::new();
     let mut cycle_index = 0usize;
+    let mut global_best_survival = best_metrics.average_survival_time;
+
+    let mut last_progress_time = Instant::now();
+    let mut last_progress_steps = total_steps;
 
     for episode in 0..config.episodes {
+        if let Some(stop) = &stop_signal {
+            if stop.load(AtomicOrdering::SeqCst) {
+                println!("training stopped by signal at episode {}", starting_episode + episode);
+                break;
+            }
+        }
+
         if cycle_index >= episode_schedule.len() {
             episode_schedule = episode_seed_cycle(
                 &config.fixed_training_seeds,
@@ -492,6 +527,7 @@ pub fn train(
             let done = env.done;
             episode_return += reward;
             episode_evades = env.enemies_evaded;
+            global_best_survival = global_best_survival.max(env.elapsed_time);
             replay.push(Transition {
                 state,
                 action: action_index,
@@ -586,6 +622,38 @@ pub fn train(
             eval.summary.min_survival_time,
             mean_loss,
         );
+
+        if let Some(tx) = &progress_tx {
+            let now = Instant::now();
+            let elapsed = now.duration_since(last_progress_time).as_secs_f32();
+            let steps_done = total_steps - last_progress_steps;
+            let sps = if elapsed > 0.0 {
+                steps_done as f32 / elapsed
+            } else {
+                0.0
+            };
+
+            last_progress_time = now;
+            last_progress_steps = total_steps;
+
+            let _ = tx.send(TrainingProgress {
+                episode: starting_episode + episode + 1,
+                total_steps,
+                epsilon: epsilon_for_step(&config, total_steps),
+                last_return: episode_return,
+                last_survival: env.elapsed_time,
+                last_evades: episode_evades,
+                avg_survival: eval.summary.average_survival_time,
+                global_best_survival,
+                min_survival: eval.summary.min_survival_time,
+                avg_return: eval.summary.average_return,
+                avg_evades: eval.summary.average_evades,
+                min_return: eval.summary.min_return,
+                timeouts: eval.summary.timeouts,
+                loss: mean_loss,
+                steps_per_second: sps,
+            });
+        }
 
         if (episode + 1) % config.checkpoint_every == 0 {
             let save_start = Instant::now();

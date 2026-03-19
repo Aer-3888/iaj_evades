@@ -6,3 +6,11 @@ target/
 training_runs/
 checkpoints/
 .ipynb_checkpoints/
+
+# Node
+node_modules/
+dist/
+.env
+
+# Rust
+**/*.rs.bk
