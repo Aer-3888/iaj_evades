@@ -221,6 +221,9 @@ async fn list_models() -> impl IntoResponse {
         ("../", "Parent"),
     ];
 
+    let mut checkpoints = Vec::new();
+    let mut other_models = Vec::new();
+
     for (dir, label) in locations {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
@@ -235,22 +238,39 @@ async fn list_models() -> impl IntoResponse {
                             continue;
                         }
 
-                        let name = format!("{} [{}]", file_name, label);
-                        models.push(ModelInfo { name, path: path.clone() });
-                        seen_paths.insert(path);
+                        seen_paths.insert(path.clone());
+
+                        if file_name.starts_with("checkpoint_ep_") {
+                            checkpoints.push((file_name, path, label));
+                        } else {
+                            let name = format!("{} [{}]", file_name, label);
+                            other_models.push(ModelInfo { name, path });
+                        }
                     }
                 }
             }
         }
     }
 
-    // Sort: best_model first, then newest checkpoints (reverse alphabetical)
+    // Identify the latest checkpoint
+    checkpoints.sort_by(|a, b| b.0.cmp(&a.0));
+    if let Some((name, path, label)) = checkpoints.first() {
+        models.push(ModelInfo {
+            name: format!("{} (Latest) [{}]", name, label),
+            path: path.clone(),
+        });
+    }
+
+    // Add all other models (Best, External, etc.)
+    models.extend(other_models);
+
+    // Sort: best_model first
     models.sort_by(|a, b| {
         let a_is_best = a.name.contains("best_model");
         let b_is_best = b.name.contains("best_model");
         if a_is_best && !b_is_best { return std::cmp::Ordering::Less; }
         if !a_is_best && b_is_best { return std::cmp::Ordering::Greater; }
-        b.name.cmp(&a.name)
+        a.name.cmp(&b.name)
     });
 
     Json(models)
