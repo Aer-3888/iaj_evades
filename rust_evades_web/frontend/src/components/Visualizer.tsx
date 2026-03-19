@@ -41,7 +41,12 @@ interface GameState {
   best_progress_ever: number;
 }
 
-export default function Visualizer() {
+interface Props {
+  isRunning: boolean;
+  isAiMode: boolean;
+}
+
+export default function Visualizer({ isRunning, isAiMode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { sendMessage, subscribe } = useSocket();
   const lastStateRef = useRef<GameState | null>(null);
@@ -55,6 +60,8 @@ export default function Visualizer() {
     });
 
     const updateAction = () => {
+      if (isAiMode) return; // Don't send manual actions in AI mode
+
       const up = pressedKeys.current.has('w') || pressedKeys.current.has('arrowup');
       const down = pressedKeys.current.has('s') || pressedKeys.current.has('arrowdown');
       const left = pressedKeys.current.has('a') || pressedKeys.current.has('arrowleft');
@@ -76,13 +83,17 @@ export default function Visualizer() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       if (['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+        // Only prevent default if the game is running and we are in manual mode
+        if (isRunning && !isAiMode) {
+          e.preventDefault();
+        }
+        
         if (!pressedKeys.current.has(key)) {
           pressedKeys.current.add(key);
           updateAction();
         }
       }
     };
-
     const handleKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       if (pressedKeys.current.has(key)) {
