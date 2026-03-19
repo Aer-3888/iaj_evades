@@ -187,18 +187,19 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-80">
           <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center">
-            <ChartIcon size={16} className="mr-2" /> Exploration (Epsilon)
+            <Target size={16} className="mr-2" /> Performance (Success & Survival)
           </h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={history}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="episode" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} domain={[0, 1]} />
+              <YAxis yAxisId="left" stroke="#f43f5e" fontSize={12} orientation="left" label={{ value: 'Wins', angle: -90, position: 'insideLeft', fill: '#f43f5e', fontSize: 10 }} />
+              <YAxis yAxisId="right" stroke="#3b82f6" fontSize={12} orientation="right" label={{ value: 'Survival (s)', angle: 90, position: 'insideRight', fill: '#3b82f6', fontSize: 10 }} />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
-                itemStyle={{ color: '#f59e0b' }}
               />
-              <Line type="monotone" dataKey="epsilon" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="timeouts" name="Wins" stroke="#f43f5e" strokeWidth={2} dot={true} r={2} />
+              <Line yAxisId="right" type="monotone" dataKey="avg_survival" name="Avg Survival" stroke="#3b82f6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
