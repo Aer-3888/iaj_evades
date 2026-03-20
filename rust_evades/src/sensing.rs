@@ -163,10 +163,14 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
 
         if state.config.map_design == crate::config::MapDesign::Closed {
             // Horizontal walls (Top/Bottom)
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top)
+            {
                 min_distance = min_distance.min(d);
             }
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom)
+            {
                 min_distance = min_distance.min(d);
             }
 
@@ -174,7 +178,9 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
             if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
                 min_distance = min_distance.min(d);
             }
-            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+            if let Some(d) =
+                raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width)
+            {
                 min_distance = min_distance.min(d);
             }
         }
@@ -217,31 +223,49 @@ pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT
 
         // ---- Near pass ----
         let mut min_near = f32::INFINITY;
+        let mut hit_idx: Option<usize> = None;
 
         for (e_idx, enemy) in state.enemies.iter().enumerate() {
             if let Some(d) = raycast_circle_distance(
-                origin_x, origin_y, dir_x, dir_y,
-                enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius,
+                origin_x,
+                origin_y,
+                dir_x,
+                dir_y,
+                enemy.body.pos.x,
+                enemy.body.pos.y,
+                enemy.body.radius,
             ) {
                 if d < min_near {
                     min_near = d;
-                    hit_by_near[e_idx] = true; // mark as hit (may be overwritten by closer)
+                    hit_idx = Some(e_idx);
                 }
+            }
+        }
+
+        if let Some(idx) = hit_idx {
+            if min_near <= near_max {
+                hit_by_near[idx] = true;
             }
         }
 
         // Walls (near pass)
         if state.config.map_design == crate::config::MapDesign::Closed {
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top)
+            {
                 min_near = min_near.min(d);
             }
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom)
+            {
                 min_near = min_near.min(d);
             }
             if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
                 min_near = min_near.min(d);
             }
-            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+            if let Some(d) =
+                raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width)
+            {
                 min_near = min_near.min(d);
             }
         }
@@ -276,8 +300,13 @@ pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT
                 continue; // skip enemies already seen in near pass
             }
             if let Some(d) = raycast_circle_distance(
-                origin_x, origin_y, dir_x, dir_y,
-                enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius,
+                origin_x,
+                origin_y,
+                dir_x,
+                dir_y,
+                enemy.body.pos.x,
+                enemy.body.pos.y,
+                enemy.body.radius,
             ) {
                 min_far = min_far.min(d);
             }
@@ -285,16 +314,22 @@ pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT
 
         // Walls always collide with the far pass too
         if state.config.map_design == crate::config::MapDesign::Closed {
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top)
+            {
                 min_far = min_far.min(d);
             }
-            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+            if let Some(d) =
+                raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom)
+            {
                 min_far = min_far.min(d);
             }
             if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
                 min_far = min_far.min(d);
             }
-            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+            if let Some(d) =
+                raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width)
+            {
                 min_far = min_far.min(d);
             }
         }
@@ -471,12 +506,12 @@ mod tests {
         // ray_length = 16.0 * 5.0 = 80.0.
         // Sample = 16.0 / 80.0 = 0.2.
         state.player.body.pos = Vec2 { x: 100.0, y: 92.0 };
-        
+
         let rays = sample_rays(&state);
-        
+
         // Ray index for 90 degrees (up) is RAY_COUNT / 4
         // RAY_COUNT = 36. 36 / 4 = 9.
-        // dir_y = -sin(90) = -1.0. 
+        // dir_y = -sin(90) = -1.0.
         // t = (60.0 - 92.0) / -1.0 = 32.0.
         approx_eq(rays[9], 0.2);
 
