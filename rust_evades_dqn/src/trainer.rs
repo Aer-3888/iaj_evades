@@ -14,7 +14,7 @@ use rand::{prelude::*, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rayon::{prelude::*, ThreadPool, ThreadPoolBuilder};
 use rust_evades::{config::GameConfig, game::Action, game::GameState};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -29,14 +29,14 @@ const OPTIMIZER_CPU_FRACTION: f32 = 0.75;
 const MIN_PARALLEL_TRAIN_BATCH: usize = 64;
 const FOCUS_SEED_DIVISOR: usize = 4;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SeedFocusMode {
     Original,
     #[default]
     BadSeeds,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrainingConfig {
     pub episodes: usize,
     pub trainer_seed: u64,
