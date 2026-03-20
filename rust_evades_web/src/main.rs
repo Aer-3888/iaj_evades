@@ -129,12 +129,14 @@ async fn main() {
     // Spawn game loop
     let state_clone = state.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(16));
         loop {
-            interval.tick().await;
+            let fps = state_clone.game_state.read().unwrap().config.render_fps;
+            let tick_duration = Duration::from_millis(1000 / fps.max(1));
+            tokio::time::sleep(tick_duration).await;
 
             let is_running = state_clone.running.load(Ordering::SeqCst);
             let ai_mode = state_clone.ai_mode.load(Ordering::SeqCst);
+            // ...
 
             if is_running {
                 let action = {
