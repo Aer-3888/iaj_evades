@@ -200,8 +200,7 @@ impl Network {
         };
         let next_best = next_q_values
             .into_iter()
-            .fold(f32::NEG_INFINITY, f32::max)
-            .max(0.0);
+            .fold(f32::NEG_INFINITY, f32::max);
         let target = transition.reward
             + if transition.done {
                 0.0
