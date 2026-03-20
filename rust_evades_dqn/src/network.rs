@@ -93,8 +93,15 @@ impl Network {
         batch: &[super::trainer::Transition],
         gamma: f32,
         learning_rate: f32,
+        huber_delta: f32,
+        gradient_clip_norm: f32,
     ) -> f32 {
-        let gradients = self.accumulate_batch(target_network, batch, gamma);
+        let mut gradients = self.accumulate_batch(target_network, batch, gamma, huber_delta);
+        clip_global_norm(
+            &mut gradients.weight_grads,
+            &mut gradients.bias_grads,
+            gradient_clip_norm,
+        );
         self.apply_gradients(gradients, batch.len(), learning_rate)
     }
 
@@ -104,12 +111,14 @@ impl Network {
         batch: &[super::trainer::Transition],
         gamma: f32,
         learning_rate: f32,
+        huber_delta: f32,
+        gradient_clip_norm: f32,
         chunk_size: usize,
     ) -> f32 {
         let network = &*self;
-        let gradients = batch
+        let mut gradients = batch
             .par_chunks(chunk_size.max(1))
-            .map(|chunk| network.accumulate_batch(target_network, chunk, gamma))
+            .map(|chunk| network.accumulate_batch(target_network, chunk, gamma, huber_delta))
             .reduce(
                 || BatchGradients::zero_for(&network.layers),
                 |mut left, right| {
@@ -117,6 +126,11 @@ impl Network {
                     left
                 },
             );
+        clip_global_norm(
+            &mut gradients.weight_grads,
+            &mut gradients.bias_grads,
+            gradient_clip_norm,
+        );
         self.apply_gradients(gradients, batch.len(), learning_rate)
     }
 
@@ -152,6 +166,7 @@ impl Network {
         target_network: &Network,
         batch: &[super::trainer::Transition],
         gamma: f32,
+        huber_delta: f32,
     ) -> BatchGradients {
         let mut gradients = BatchGradients::zero_for(&self.layers);
         for transition in batch {
@@ -159,6 +174,7 @@ impl Network {
                 target_network,
                 transition,
                 gamma,
+                huber_delta,
                 &mut gradients.weight_grads,
                 &mut gradients.bias_grads,
             );
@@ -171,6 +187,7 @@ impl Network {
         target_network: &Network,
         transition: &super::trainer::Transition,
         gamma: f32,
+        huber_delta: f32,
         weight_grads: &mut [Vec<f32>],
         bias_grads: &mut [Vec<f32>],
     ) -> f32 {
@@ -194,8 +211,10 @@ impl Network {
         let prediction = q_values[transition.action];
         let diff = prediction - target;
 
+        let (loss, grad_wrt_prediction) = huber(diff, huber_delta);
+
         let mut deltas = vec![vec![0.0; q_values.len()]];
-        deltas[0][transition.action] = 2.0 * diff;
+        deltas[0][transition.action] = grad_wrt_prediction;
 
         for layer_index in (0..self.layers.len()).rev() {
             let delta = deltas.pop().unwrap();
@@ -225,7 +244,7 @@ impl Network {
             }
         }
 
-        diff * diff
+        loss
     }
 
     fn forward(&self, input: &[f32]) -> ForwardCache {
@@ -261,6 +280,49 @@ impl Network {
     }
 }
 
+fn huber(diff: f32, delta: f32) -> (f32, f32) {
+    let abs_diff = diff.abs();
+    if abs_diff <= delta {
+        (0.5 * diff * diff, diff)
+    } else {
+        (delta * (abs_diff - 0.5 * delta), delta * diff.signum())
+    }
+}
+
+fn clip_global_norm(
+    weight_grads: &mut [Vec<f32>],
+    bias_grads: &mut [Vec<f32>],
+    max_norm: f32,
+) -> f32 {
+    let mut sq_norm = 0.0;
+    for layer in weight_grads.iter() {
+        for &g in layer.iter() {
+            sq_norm += g * g;
+        }
+    }
+    for layer in bias_grads.iter() {
+        for &g in layer.iter() {
+            sq_norm += g * g;
+        }
+    }
+
+    let norm = sq_norm.sqrt();
+    if norm > max_norm {
+        let scale = max_norm / (norm + 1e-8);
+        for layer in weight_grads.iter_mut() {
+            for g in layer.iter_mut() {
+                *g *= scale;
+            }
+        }
+        for layer in bias_grads.iter_mut() {
+            for g in layer.iter_mut() {
+                *g *= scale;
+            }
+        }
+    }
+    norm
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -273,5 +335,46 @@ mod tests {
         let network = Network::new(&[INPUT_SIZE, 32, 9], &mut rng);
         let output = network.predict(&vec![0.0; INPUT_SIZE]);
         assert_eq!(output.len(), 9);
+    }
+
+    #[test]
+    fn huber_small_error_regime() {
+        let delta = 1.0;
+        let diff = 0.5;
+        let (loss, grad) = super::huber(diff, delta);
+        assert_eq!(loss, 0.5 * 0.5 * 0.5);
+        assert_eq!(grad, 0.5);
+    }
+
+    #[test]
+    fn huber_large_error_regime() {
+        let delta = 1.0;
+        let diff = 2.0;
+        let (loss, grad) = super::huber(diff, delta);
+        assert_eq!(loss, 1.0 * (2.0 - 0.5 * 1.0));
+        assert_eq!(grad, 1.0);
+
+        let diff_neg = -3.0;
+        let (loss_neg, grad_neg) = super::huber(diff_neg, delta);
+        assert_eq!(loss_neg, 1.0 * (3.0 - 0.5 * 1.0));
+        assert_eq!(grad_neg, -1.0);
+    }
+
+    #[test]
+    fn test_clip_global_norm() {
+        let mut weight_grads = vec![vec![3.0, 4.0]]; // norm = 5
+        let mut bias_grads = vec![vec![0.0]];
+        let pre_clip_norm = super::clip_global_norm(&mut weight_grads, &mut bias_grads, 10.0);
+        assert_eq!(pre_clip_norm, 5.0);
+        assert_eq!(weight_grads[0][0], 3.0);
+        assert_eq!(weight_grads[0][1], 4.0);
+
+        let mut weight_grads2 = vec![vec![6.0, 8.0]]; // norm = 10
+        let mut bias_grads2 = vec![vec![0.0]];
+        let pre_clip_norm2 = super::clip_global_norm(&mut weight_grads2, &mut bias_grads2, 5.0);
+        assert_eq!(pre_clip_norm2, 10.0);
+        // scaled by 5/10 = 0.5
+        assert_eq!(weight_grads2[0][0], 3.0);
+        assert_eq!(weight_grads2[0][1], 4.0);
     }
 }

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     network::Layer,
-    observation::{INPUT_SIZE, RAY_COUNT, DQN2_INPUT_SIZE, DQN2_RAY_COUNT},
+    observation::{DQN2_INPUT_SIZE, DQN2_RAY_COUNT, INPUT_SIZE, RAY_COUNT},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]

@@ -5,9 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 
 use rust_evades_dqn::{
     model::{ModelType, SavedModel},
-    trainer::{
-        default_training_seeds, evaluate_saved_model, train, SeedFocusMode, TrainingConfig,
-    },
+    trainer::{default_training_seeds, evaluate_saved_model, train, SeedFocusMode, TrainingConfig},
 };
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

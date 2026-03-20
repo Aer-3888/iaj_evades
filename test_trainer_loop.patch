@@ -1,0 +1,35 @@
+--- rust_evades_dqn/src/trainer.rs
++++ rust_evades_dqn/src/trainer.rs
+@@ -1016,6 +1016,39 @@
+         let resume = validate_resume_model(&config, model).unwrap();
+         assert_eq!(resume.completed_episodes, 10);
+         assert_eq!(resume.total_steps, 500);
+     }
++
++    #[test]
++    fn buggy_loop_zeroes_deltas() {
++        let config = TrainingConfig::default();
++        let mut env = GameState::new(GameConfig::default(), Some(42));
++        let mut observation = ObsBuilderState::new(config.model_type);
++        observation.reset(&env);
++        
++        // step 0
++        let state0 = observation.build_vec(&env);
++        env.step_fixed(Action::ALL[0]);
++        let next_state0 = observation.build_vec(&env);
++        
++        // The bug: Re-building state at top of next iteration
++        let state1 = observation.build_vec(&env);
++        
++        // next_state0 should have delta
++        let n0_vel_x = next_state0[next_state0.len() - 2];
++        let n0_vel_y = next_state0[next_state0.len() - 1];
++        assert!(n0_vel_x != 0.0 || n0_vel_y != 0.0, "next_state0 should have delta");
++        
++        // state1 should have NO delta, because the builder was advanced by next_state0
++        let s1_vel_x = state1[state1.len() - 2];
++        let s1_vel_y = state1[state1.len() - 1];
++        assert_eq!(s1_vel_x, 0.0, "Bug check: x delta should be 0.0");
++        assert_eq!(s1_vel_y, 0.0, "Bug check: y delta should be 0.0");
++    }
+ }

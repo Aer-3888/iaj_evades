@@ -31,6 +31,8 @@ interface TrainingConfig {
   epsilon_start: number;
   epsilon_end: number;
   action_repeat: number;
+  huber_delta: number;
+  gradient_clip_norm: number;
 }
 
 const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
@@ -53,6 +55,8 @@ const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
   epsilon_start: 1.0,
   epsilon_end: 0.03,
   action_repeat: 2,
+  huber_delta: 10.0,
+  gradient_clip_norm: 1280.0,
 };
 
 interface ModelInfo {
@@ -78,11 +82,30 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
   const { showToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<TrainingConfig>(DEFAULT_TRAINING_CONFIG);
+  const [activeConfig, setActiveConfig] = useState<{ config: TrainingConfig, resume_model_path: string | null } | null>(null);
   const [resumeModelPath, setResumeModelPath] = useState<string | null>(null);
   const [resumeModelType, setResumeModelType] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [pendingCrossTypeStart, setPendingCrossTypeStart] = useState(false);
+
+  const fetchActiveConfig = async () => {
+    try {
+      const res = await fetch('/api/train/active_config');
+      const data = await res.json();
+      setActiveConfig(data);
+    } catch (e) {
+      console.error('Failed to fetch active config', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isRunning) {
+      fetchActiveConfig();
+    } else {
+      setActiveConfig(null);
+    }
+  }, [isRunning]);
 
   const fetchModels = async () => {
     setLoadingModels(true);
@@ -329,6 +352,34 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
           </div>
         </div>
 
+        {isRunning && activeConfig && (
+          <div className="border-t border-slate-800 p-4 bg-slate-950/50 text-xs text-slate-400">
+             <div className="flex items-center mb-2">
+               <Settings2 size={14} className="mr-2 text-emerald-500" />
+               <span className="font-bold text-slate-300 uppercase tracking-widest">Active Session Settings</span>
+             </div>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 font-mono mt-3">
+               <div>Model: <span className="text-emerald-400">{activeConfig.config.model_type.toUpperCase()}</span></div>
+               <div>Episodes: <span className="text-emerald-400">{activeConfig.config.episodes}</span></div>
+               <div>LR: <span className="text-emerald-400">{activeConfig.config.learning_rate}</span></div>
+               <div>Trainer Seed: <span className="text-emerald-400">{activeConfig.config.trainer_seed}</span></div>
+               <div>Eps Decay: <span className="text-emerald-400">{activeConfig.config.epsilon_decay_steps}</span></div>
+               <div>Batch: <span className="text-emerald-400">{activeConfig.config.batch_size}</span></div>
+               <div>Replay: <span className="text-emerald-400">{activeConfig.config.replay_capacity}</span></div>
+               <div>Action Rep: <span className="text-emerald-400">{activeConfig.config.action_repeat}</span></div>
+               <div>Target Sync: <span className="text-emerald-400">{activeConfig.config.target_sync_interval}</span></div>
+               <div>Huber Delta: <span className="text-emerald-400">{activeConfig.config.huber_delta}</span></div>
+               <div>Grad Clip: <span className="text-emerald-400">{activeConfig.config.gradient_clip_norm}</span></div>
+               <div>Seed Focus: <span className="text-emerald-400">{activeConfig.config.seed_focus_mode}</span></div>
+               {activeConfig.resume_model_path && (
+                 <div className="col-span-2 md:col-span-4 mt-1 border-t border-slate-800/50 pt-2">
+                   Resume Model: <span className="text-blue-400">{activeConfig.resume_model_path.split('/').pop()}</span>
+                 </div>
+               )}
+             </div>
+          </div>
+        )}
+
         {showSettings && !isRunning && (
           <div className="border-t border-slate-800 p-6 bg-slate-950/50 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
             <div className="space-y-4">
@@ -403,6 +454,19 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                     value={config.replay_capacity} 
                     onChange={v => setConfig({...config, replay_capacity: v})} 
                     min={1000} max={500000} step={1000}
+                  />
+                 <SettingInput 
+                    label="Huber Delta" 
+                    value={config.huber_delta} 
+                    onChange={v => setConfig({...config, huber_delta: v})} 
+                    min={1} max={100} step={1}
+                    isFloat
+                  />
+                 <SettingInput 
+                    label="Gradient Clip Norm" 
+                    value={config.gradient_clip_norm} 
+                    onChange={v => setConfig({...config, gradient_clip_norm: v})} 
+                    min={100} max={5000} step={10}
                   />
                </div>
             </div>
