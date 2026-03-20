@@ -18,3 +18,4 @@
 - [x] Flashlight mode
 - [ ] Fullscreen game mode
 - [ ] Seed finder tab pour trouver les seeds stylés
+- [ ] Rolling average of performance by steps
