@@ -23,9 +23,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod training_manager;
 mod cmd_runner;
+mod evaluation_manager;
 
 use training_manager::TrainingManager;
 use cmd_runner::{CmdRunner, LogLine};
+use evaluation_manager::{EvaluationManager, EvaluationProgress};
 
 struct AppState {
     game_state: RwLock<GameState>,
@@ -36,6 +38,7 @@ struct AppState {
     obs_builder: RwLock<ObservationBuilder>,
     tx_broadcast: broadcast::Sender<String>,
     training_manager: TrainingManager,
+    evaluation_manager: EvaluationManager,
     cmd_runner: CmdRunner,
 }
 
@@ -44,6 +47,7 @@ struct AppState {
 enum HubMessage {
     Game(GameState),
     Training(TrainingProgress),
+    Evaluation(EvaluationProgress),
     Log(LogLine),
     Status(EngineStatus),
 }
@@ -65,6 +69,7 @@ async fn main() {
     let game_state = GameState::new(config.clone(), None);
     let (tx_broadcast, _) = broadcast::channel(100);
     let (training_manager, mut training_rx) = TrainingManager::new();
+    let (evaluation_manager, mut evaluation_rx) = EvaluationManager::new();
     let (cmd_runner, mut log_rx) = CmdRunner::new();
 
     let model_path = std::path::Path::new("best_model.json");
@@ -96,16 +101,21 @@ async fn main() {
         obs_builder: RwLock::new(ObservationBuilder::default()),
         tx_broadcast: tx_broadcast.clone(),
         training_manager,
+        evaluation_manager,
         cmd_runner,
     });
 
-    // Bridge training and logs to main broadcast
+    // Bridge training, evaluation and logs to main broadcast
     let tx_bridge = tx_broadcast.clone();
     tokio::spawn(async move {
         loop {
             tokio::select! {
                 Ok(progress) = training_rx.recv() => {
                     let msg = HubMessage::Training(progress);
+                    let _ = tx_bridge.send(serde_json::to_string(&msg).unwrap());
+                }
+                Ok(progress) = evaluation_rx.recv() => {
+                    let msg = HubMessage::Evaluation(progress);
                     let _ = tx_bridge.send(serde_json::to_string(&msg).unwrap());
                 }
                 Ok(log) = log_rx.recv() => {
@@ -197,6 +207,9 @@ async fn main() {
         .route("/api/train/stop", post(stop_training))
         .route("/api/train/status", get(get_training_status))
         .route("/api/train/promote", post(promote_model))
+        .route("/api/eval/start", post(start_evaluation))
+        .route("/api/eval/stop", post(stop_evaluation))
+        .route("/api/eval/status", get(get_evaluation_status))
         .route("/api/models", get(list_models))
         .route("/api/models/load", post(load_model))
         .route("/api/run", post(run_command))
@@ -443,6 +456,43 @@ async fn get_training_status(
     State(state): State<Arc<AppState>>,
 ) -> Json<bool> {
     Json(state.training_manager.is_running())
+}
+
+#[derive(Deserialize)]
+struct EvalRequest {
+    start_seed: u64,
+    num_seeds: usize,
+}
+
+async fn start_evaluation(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<EvalRequest>,
+) -> impl IntoResponse {
+    let model = {
+        let model_guard = state.model.read().unwrap();
+        model_guard.clone()
+    };
+
+    if let Some(net) = model {
+        let config = state.game_state.read().unwrap().config.clone();
+        state.evaluation_manager.start(net, req.start_seed, req.num_seeds, config);
+        "started".into_response()
+    } else {
+        (ax_ws::http::StatusCode::BAD_REQUEST, "No model loaded").into_response()
+    }
+}
+
+async fn stop_evaluation(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    state.evaluation_manager.stop();
+    "stopped"
+}
+
+async fn get_evaluation_status(
+    State(state): State<Arc<AppState>>,
+) -> Json<bool> {
+    Json(state.evaluation_manager.is_running())
 }
 
 #[derive(Deserialize)]

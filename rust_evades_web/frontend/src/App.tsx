@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import Visualizer from './components/Visualizer'
 import SettingsPanel from './components/SettingsPanel'
 import TrainingPanel from './components/TrainingPanel'
+import EvaluationPanel from './components/EvaluationPanel'
 import Console from './components/Console'
 import ModelSelector from './components/ModelSelector'
-import { Activity, Settings, Play, Pause, RotateCcw, Brain, User } from 'lucide-react'
+import { Activity, Settings, Play, Pause, RotateCcw, Brain, User, CheckSquare } from 'lucide-react'
 import { SocketProvider, useSocket } from './contexts/SocketContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ToastContainer from './components/Toast'
@@ -34,7 +35,7 @@ export interface TrainingProgress {
 }
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'game' | 'train' | 'settings'>('game')
+  const [activeTab, setActiveTab] = useState<'game' | 'train' | 'eval' | 'settings'>('game')
   const { isConnected, sendMessage, subscribe } = useSocket()
   const [status, setStatus] = useState<EngineStatus>({ running: false, ai_mode: false, has_model: false })
   const [trainingHistory, setTrainingHistory] = useState<TrainingProgress[]>([])
@@ -97,6 +98,12 @@ function AppContent() {
           <Activity size={24} />
         </button>
         <button 
+          onClick={() => setActiveTab('eval')}
+          className={`p-2 rounded-lg transition ${activeTab === 'eval' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}
+        >
+          <CheckSquare size={24} />
+        </button>
+        <button 
           onClick={() => setActiveTab('settings')}
           className={`p-2 rounded-lg transition ${activeTab === 'settings' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}
         >
@@ -108,7 +115,7 @@ function AppContent() {
       <main className="flex-1 flex flex-col relative min-w-0 overflow-hidden">
         <header className="h-12 border-b border-slate-800 flex items-center px-6 bg-slate-900 justify-between relative z-[60] pointer-events-auto">
           <h1 className="font-bold text-slate-200 text-base">
-            {activeTab === 'game' ? 'Simulation' : activeTab === 'train' ? 'Training' : 'Settings'}
+            {activeTab === 'game' ? 'Simulation' : activeTab === 'train' ? 'Training' : activeTab === 'eval' ? 'Evaluation' : 'Settings'}
           </h1>
           {activeTab === 'game' && (
             <div className="flex items-center space-x-4">
@@ -186,6 +193,7 @@ function AppContent() {
           )}
           
           {activeTab === 'settings' && <SettingsPanel />}
+          {activeTab === 'eval' && <EvaluationPanel />}
           {activeTab === 'train' && (
             <TrainingPanel 
               history={trainingHistory} 
