@@ -273,66 +273,139 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
     // Raycasting Visualization
     if (config.show_raycast) {
       const RAY_COUNT = 36;
-      const rayLength = state.player.body.radius * 5.0;
+      const nearRayLength = state.player.body.radius * 5.0;
+      const farRayLength = nearRayLength * 2.0;
       const originX = state.player.body.pos.x;
       const originY = state.player.body.pos.y;
 
       ctx.save();
-      ctx.lineWidth = 2; // Increased from 1 to 2
-      ctx.shadowBlur = 4;
-      ctx.shadowColor = 'rgba(250, 204, 21, 0.4)';
+      ctx.lineWidth = 2;
 
+      const hitByNear = new Set<number>();
+      const nearRays: { actualDistance: number, endX: number, endY: number, minNear: number }[] = [];
+      const farRays: { actualDistance: number, endX: number, endY: number, minFar: number }[] = [];
+
+      // 1. Near Pass
       for (let i = 0; i < RAY_COUNT; i++) {
         const angle = i * (360 / RAY_COUNT) * (Math.PI / 180);
         const dirX = Math.cos(angle);
         const dirY = -Math.sin(angle);
 
-        let minDistance = Infinity;
+        let minNear = Infinity;
 
         // Check enemies
-        for (const enemy of state.enemies) {
+        state.enemies.forEach((enemy, idx) => {
           const dist = raycastCircleDistance(
             originX, originY, dirX, dirY,
             enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius
           );
-          if (dist !== null) minDistance = Math.min(minDistance, dist);
-        }
+          if (dist !== null && dist < minNear) {
+            minNear = dist;
+            hitByNear.add(idx);
+          }
+        });
 
         // Check walls in Closed mode
         if (config.map_design === 'Closed') {
           const topDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_top);
-          if (topDist !== null) minDistance = Math.min(minDistance, topDist);
+          if (topDist !== null) minNear = Math.min(minNear, topDist);
 
           const bottomDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_bottom);
-          if (bottomDist !== null) minDistance = Math.min(minDistance, bottomDist);
+          if (bottomDist !== null) minNear = Math.min(minNear, bottomDist);
 
           const leftDist = raycastVerticalLineDistance(originX, dirX, 0);
-          if (leftDist !== null) minDistance = Math.min(minDistance, leftDist);
+          if (leftDist !== null) minNear = Math.min(minNear, leftDist);
 
           const rightDist = raycastVerticalLineDistance(originX, dirX, config.world_width);
-          if (rightDist !== null) minDistance = Math.min(minDistance, rightDist);
+          if (rightDist !== null) minNear = Math.min(minNear, rightDist);
         }
 
-        const actualDistance = Math.min(minDistance, rayLength);
+        const actualDistance = Math.min(minNear, nearRayLength);
         const endX = (originX + dirX * actualDistance) - camX;
         const endY = (originY + dirY * actualDistance) - camY;
 
-        // Draw ray
-        const alpha = 1.0 - (actualDistance / rayLength);
+        nearRays.push({ actualDistance, endX, endY, minNear });
+      }
+
+      // 2. Far Pass
+      for (let i = 0; i < RAY_COUNT; i++) {
+        const angle = i * (360 / RAY_COUNT) * (Math.PI / 180);
+        const dirX = Math.cos(angle);
+        const dirY = -Math.sin(angle);
+
+        let minFar = Infinity;
+
+        // Check enemies (skip hitByNear)
+        state.enemies.forEach((enemy, idx) => {
+          if (hitByNear.has(idx)) return;
+          const dist = raycastCircleDistance(
+            originX, originY, dirX, dirY,
+            enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius
+          );
+          if (dist !== null && dist < minFar) {
+            minFar = dist;
+          }
+        });
+
+        // Check walls in Closed mode
+        if (config.map_design === 'Closed') {
+          const topDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_top);
+          if (topDist !== null) minFar = Math.min(minFar, topDist);
+
+          const bottomDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_bottom);
+          if (bottomDist !== null) minFar = Math.min(minFar, bottomDist);
+
+          const leftDist = raycastVerticalLineDistance(originX, dirX, 0);
+          if (leftDist !== null) minFar = Math.min(minFar, leftDist);
+
+          const rightDist = raycastVerticalLineDistance(originX, dirX, config.world_width);
+          if (rightDist !== null) minFar = Math.min(minFar, rightDist);
+        }
+
+        const actualDistance = Math.min(minFar, farRayLength);
+        const endX = (originX + dirX * actualDistance) - camX;
+        const endY = (originY + dirY * actualDistance) - camY;
+
+        farRays.push({ actualDistance, endX, endY, minFar });
+      }
+
+      // 3. Draw Far Rays (Cyan Blue)
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(6, 182, 212, 0.4)';
+      farRays.forEach(ray => {
+        const alpha = 1.0 - (ray.actualDistance / farRayLength);
+        ctx.strokeStyle = `rgba(6, 182, 212, ${0.2 + alpha * 0.5})`; // Cyan blue
+        ctx.beginPath();
+        ctx.moveTo(pX, pY);
+        ctx.lineTo(ray.endX, ray.endY);
+        ctx.stroke();
+
+        if (ray.minFar <= farRayLength) {
+          ctx.fillStyle = '#06b6d4'; // Cyan
+          ctx.beginPath();
+          ctx.arc(ray.endX, ray.endY, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 4. Draw Near Rays (Yellow)
+      ctx.shadowColor = 'rgba(250, 204, 21, 0.4)';
+      nearRays.forEach(ray => {
+        const alpha = 1.0 - (ray.actualDistance / nearRayLength);
         ctx.strokeStyle = `rgba(250, 204, 21, ${0.3 + alpha * 0.7})`;
         ctx.beginPath();
         ctx.moveTo(pX, pY);
-        ctx.lineTo(endX, endY);
+        ctx.lineTo(ray.endX, ray.endY);
         ctx.stroke();
 
-        // Draw hit point
-        if (minDistance <= rayLength) {
+        if (ray.minNear <= nearRayLength) {
           ctx.fillStyle = '#facc15';
           ctx.beginPath();
-          ctx.arc(endX, endY, 3, 0, Math.PI * 2); // Increased from 2 to 3
+          ctx.arc(ray.endX, ray.endY, 3, 0, Math.PI * 2);
           ctx.fill();
         }
-      }
+      });
+
       ctx.restore();
     }
 
