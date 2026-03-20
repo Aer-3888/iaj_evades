@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Save, RefreshCcw } from 'lucide-react'
 import ModelSelector from './ModelSelector'
+import { useToast } from '../contexts/ToastContext'
 
 interface GameConfig {
   map_design: "Open" | "Closed";
@@ -16,6 +17,7 @@ interface GameConfig {
 export default function SettingsPanel() {
   const [config, setConfig] = useState<GameConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   const fetchConfig = async () => {
     setLoading(true);
@@ -25,6 +27,7 @@ export default function SettingsPanel() {
       setConfig(data);
     } catch (e) {
       console.error('Failed to fetch config', e);
+      showToast('Failed to load settings', 'error');
     } finally {
       setLoading(false);
     }
@@ -42,9 +45,9 @@ export default function SettingsPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
-      alert('Settings applied successfully!');
+      showToast('Settings applied successfully!', 'success');
     } catch (e) {
-      alert('Failed to save settings');
+      showToast('Failed to save settings', 'error');
     }
   };
 

@@ -2,6 +2,7 @@ import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy } f
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import StatCard from './StatCard';
 import { TrainingProgress } from '../App';
+import { useToast } from '../contexts/ToastContext';
 
 interface Props {
   history: TrainingProgress[];
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function TrainingPanel({ history, isRunning, setIsRunning }: Props) {
+  const { showToast } = useToast();
   const latest = history[history.length - 1] || {
     episode: 0,
     total_steps: 0,
@@ -28,16 +30,18 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     try {
       await fetch('/api/train/start', { method: 'POST' });
       setIsRunning(true);
+      showToast('Training session started', 'success');
     } catch (e) {
-      alert('Failed to start training session');
+      showToast('Failed to start training session', 'error');
     }
   };
 
   const handleStop = async () => {
     try {
       await fetch('/api/train/stop', { method: 'POST' });
+      showToast('Training session stopped', 'info');
     } catch (e) {
-      alert('Failed to stop training session');
+      showToast('Failed to stop training session', 'error');
     }
   };
 
@@ -45,9 +49,9 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     try {
       const res = await fetch('/api/train/promote', { method: 'POST' });
       const text = await res.text();
-      alert(text);
+      showToast(text, 'success');
     } catch (e) {
-      alert('Failed to promote model');
+      showToast('Failed to promote model', 'error');
     }
   };
 

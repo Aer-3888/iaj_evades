@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FileJson, RefreshCw, Check } from 'lucide-react'
+import { useToast } from '../contexts/ToastContext'
 
 interface ModelInfo {
   name: string;
@@ -10,6 +11,7 @@ export default function ModelSelector() {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [activePath, setActivePath] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const fetchModels = async () => {
     setLoading(true);
@@ -19,6 +21,7 @@ export default function ModelSelector() {
       setModels(data);
     } catch (e) {
       console.error('Failed to fetch models', e);
+      showToast('Failed to fetch models list', 'error');
     } finally {
       setLoading(false);
     }
@@ -34,12 +37,12 @@ export default function ModelSelector() {
       });
       if (res.ok) {
         setActivePath(path);
-        alert('Model loaded successfully!');
+        showToast('Model loaded successfully!', 'success');
       } else {
-        alert('Failed to load model');
+        showToast('Failed to load model', 'error');
       }
     } catch (e) {
-      alert('Error loading model');
+      showToast('Error connecting to backend', 'error');
     } finally {
       setLoading(false);
     }
