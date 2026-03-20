@@ -251,6 +251,7 @@ async fn main() {
         .route("/api/train/start", post(start_training))
         .route("/api/train/stop", post(stop_training))
         .route("/api/train/status", get(get_training_status))
+        .route("/api/train/active_config", get(get_active_config))
         .route("/api/train/history", get(get_training_history))
         .route("/api/train/promote", post(promote_model))
         .route("/api/eval/start", post(start_evaluation))
@@ -588,8 +589,25 @@ async fn start_training(
     }
 
     let output_dir = std::path::PathBuf::from("training_runs/web_run");
-    state.training_manager.start(req.config, output_dir, resume_model);
+    let resume_path = req.resume_model_path.clone();
+    state.training_manager.start(req.config, output_dir, resume_model, resume_path);
     "started".into_response()
+}
+
+#[derive(Serialize)]
+struct ActiveConfigResponse {
+    config: rust_evades_dqn::trainer::TrainingConfig,
+    resume_model_path: Option<String>,
+}
+
+async fn get_active_config(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    if let Some((config, resume_model_path)) = state.training_manager.get_active_config() {
+        Json(Some(ActiveConfigResponse { config, resume_model_path })).into_response()
+    } else {
+        Json(None::<ActiveConfigResponse>).into_response()
+    }
 }
 
 async fn stop_training(

@@ -1,10 +1,12 @@
 use std::{
     cmp::Ordering,
     collections::VecDeque,
-    env,
-    fs,
+    env, fs,
     path::Path,
-    sync::{Arc, atomic::{AtomicBool, Ordering as AtomicOrdering}},
+    sync::{
+        atomic::{AtomicBool, Ordering as AtomicOrdering},
+        Arc,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -53,11 +55,23 @@ pub struct TrainingConfig {
     pub train_every: usize,
     pub target_sync_interval: usize,
     pub learning_rate: f32,
+    #[serde(default = "default_huber_delta")]
+    pub huber_delta: f32,
+    #[serde(default = "default_gradient_clip_norm")]
+    pub gradient_clip_norm: f32,
     pub gamma: f32,
     pub epsilon_start: f32,
     pub epsilon_end: f32,
     pub epsilon_decay_steps: usize,
     pub action_repeat: usize,
+}
+
+fn default_huber_delta() -> f32 {
+    10.0
+}
+
+fn default_gradient_clip_norm() -> f32 {
+    1280.0
 }
 
 impl Default for TrainingConfig {
@@ -77,6 +91,8 @@ impl Default for TrainingConfig {
             train_every: 2,
             target_sync_interval: 1_000,
             learning_rate: 0.0003,
+            huber_delta: 10.0,
+            gradient_clip_norm: 1280.0,
             gamma: 0.99,
             epsilon_start: 1.0,
             epsilon_end: 0.03,
@@ -174,10 +190,7 @@ impl ProfileStats {
     fn print(&self) {
         let total = self.total_wall.as_secs_f64().max(1.0e-9);
         println!("profiling summary:");
-        println!(
-            "  total: {:.3}s (100.0%)",
-            self.total_wall.as_secs_f64()
-        );
+        println!("  total: {:.3}s (100.0%)", self.total_wall.as_secs_f64());
         println!(
             "  env+policy: {:.3}s ({:.1}%)",
             self.environment_and_policy.as_secs_f64(),
@@ -237,10 +250,7 @@ enum EvaluationRuntime {
 
 enum OptimizationRuntime {
     Sequential,
-    Parallel {
-        pool: ThreadPool,
-        chunk_size: usize,
-    },
+    Parallel { pool: ThreadPool, chunk_size: usize },
 }
 
 /// Unified observation builder that handles both Dqn and Dqn2 model types.
@@ -273,7 +283,12 @@ impl ObsBuilderState {
 }
 
 impl EvaluationRuntime {
-    fn choose(network: &Network, seeds: &[u64], action_repeat: usize, model_type: ModelType) -> anyhow::Result<Self> {
+    fn choose(
+        network: &Network,
+        seeds: &[u64],
+        action_repeat: usize,
+        model_type: ModelType,
+    ) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
             .unwrap_or(1);
@@ -296,7 +311,11 @@ impl EvaluationRuntime {
             2,
         );
         let parallel_benchmark = benchmark_evaluation(
-            || pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)),
+            || {
+                pool.install(|| {
+                    evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)
+                })
+            },
             2,
         );
 
@@ -323,10 +342,12 @@ impl EvaluationRuntime {
         model_type: ModelType,
     ) -> Vec<SeedEpisodeSummary> {
         match self {
-            Self::Sequential => evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type),
-            Self::Parallel { pool } => {
-                pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type))
+            Self::Sequential => {
+                evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type)
             }
+            Self::Parallel { pool } => pool.install(|| {
+                evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)
+            }),
         }
     }
 }
@@ -338,6 +359,8 @@ impl OptimizationRuntime {
         batch_size: usize,
         gamma: f32,
         learning_rate: f32,
+        huber_delta: f32,
+        gradient_clip_norm: f32,
         input_size: usize,
     ) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
@@ -362,7 +385,14 @@ impl OptimizationRuntime {
         let sequential_benchmark = benchmark_runtime(
             || {
                 let mut online = network.clone();
-                let _ = online.train_batch(target_network, &benchmark_batch, gamma, learning_rate);
+                let _ = online.train_batch(
+                    target_network,
+                    &benchmark_batch,
+                    gamma,
+                    learning_rate,
+                    huber_delta,
+                    gradient_clip_norm,
+                );
             },
             2,
         );
@@ -375,6 +405,8 @@ impl OptimizationRuntime {
                         &benchmark_batch,
                         gamma,
                         learning_rate,
+                        huber_delta,
+                        gradient_clip_norm,
                         chunk_size,
                     );
                 });
@@ -387,10 +419,7 @@ impl OptimizationRuntime {
                 "optimizer mode: parallel with {} threads (seq {:?}, par {:?})",
                 desired_threads, sequential_benchmark, parallel_benchmark
             );
-            Ok(Self::Parallel {
-                pool,
-                chunk_size,
-            })
+            Ok(Self::Parallel { pool, chunk_size })
         } else {
             println!(
                 "optimizer mode: sequential (parallel {:?} was not faster than sequential {:?})",
@@ -407,18 +436,26 @@ impl OptimizationRuntime {
         batch: &[Transition],
         gamma: f32,
         learning_rate: f32,
+        huber_delta: f32,
+        gradient_clip_norm: f32,
     ) -> f32 {
         match self {
-            Self::Sequential => online.train_batch(target_network, batch, gamma, learning_rate),
-            Self::Parallel {
-                pool,
-                chunk_size,
-            } => pool.install(|| {
+            Self::Sequential => online.train_batch(
+                target_network,
+                batch,
+                gamma,
+                learning_rate,
+                huber_delta,
+                gradient_clip_norm,
+            ),
+            Self::Parallel { pool, chunk_size } => pool.install(|| {
                 online.train_batch_parallel(
                     target_network,
                     batch,
                     gamma,
                     learning_rate,
+                    huber_delta,
+                    gradient_clip_norm,
                     *chunk_size,
                 )
             }),
@@ -487,12 +524,18 @@ pub fn train(
         config.batch_size,
         config.gamma,
         config.learning_rate,
+        config.huber_delta,
+        config.gradient_clip_norm,
         input_size,
     )?;
     profile_stats.optimization_runtime_choice += optimizer_runtime_start.elapsed();
     let eval_runtime_start = Instant::now();
-    let evaluation_runtime =
-        EvaluationRuntime::choose(&online, &config.fixed_training_seeds, config.action_repeat, config.model_type)?;
+    let evaluation_runtime = EvaluationRuntime::choose(
+        &online,
+        &config.fixed_training_seeds,
+        config.action_repeat,
+        config.model_type,
+    )?;
     profile_stats.evaluation_runtime_choice += eval_runtime_start.elapsed();
 
     let mut best_metrics = resume_state
@@ -518,7 +561,10 @@ pub fn train(
     for episode in 0..config.episodes {
         if let Some(stop) = &stop_signal {
             if stop.load(AtomicOrdering::SeqCst) {
-                println!("training stopped by signal at episode {}", starting_episode + episode);
+                println!(
+                    "training stopped by signal at episode {}",
+                    starting_episode + episode
+                );
                 break;
             }
         }
@@ -538,13 +584,14 @@ pub fn train(
         let mut env = GameState::new(GameConfig::default(), Some(seed));
         let mut observation = ObsBuilderState::new(config.model_type);
         observation.reset(&env);
+        let mut current_state = observation.build_vec(&env);
         let mut episode_return = 0.0;
         let mut episode_evades = 0u32;
         let mut losses = Vec::new();
 
         while !env.done {
             let env_policy_start = Instant::now();
-            let state = observation.build_vec(&env);
+            let state = current_state.clone();
             let epsilon = epsilon_for_step(&config, total_steps);
             let action_index = select_action(&online, &state, epsilon, &mut rng);
             let action = Action::ALL[action_index];
@@ -559,6 +606,7 @@ pub fn train(
             }
 
             let next_state = observation.build_vec(&env);
+            current_state = next_state.clone();
             profile_stats.environment_and_policy += env_policy_start.elapsed();
             let done = env.done;
             episode_return += reward;
@@ -587,6 +635,8 @@ pub fn train(
                     &batch,
                     config.gamma,
                     config.learning_rate,
+                    config.huber_delta,
+                    config.gradient_clip_norm,
                 );
                 profile_stats.train_batch += train_start.elapsed();
                 profile_stats.optimization += optimize_start.elapsed();
@@ -716,10 +766,7 @@ pub fn train(
             )?;
 
             // Also save as 'latest_model.json' for easier dashboard reference
-            let _ = save_model(
-                output_dir.join("latest_model.json"),
-                saved_model,
-            );
+            let _ = save_model(output_dir.join("latest_model.json"), saved_model);
 
             profile_stats.serialization += save_start.elapsed();
             profile_stats.saves += 1;
@@ -800,9 +847,10 @@ fn validate_resume_model(
 
     // Allow cross-type resume by zero-expanding the first layer weights.
     if model.input_size != expected_input {
-        let first = model.layers.first_mut().ok_or_else(|| {
-            anyhow::anyhow!("resume model has no layers")
-        })?;
+        let first = model
+            .layers
+            .first_mut()
+            .ok_or_else(|| anyhow::anyhow!("resume model has no layers"))?;
         let old_in = first.input_size;
         let out = first.output_size;
 
@@ -824,7 +872,8 @@ fn validate_resume_model(
             let mut new_weights = Vec::with_capacity(out * expected_input);
             for out_idx in 0..out {
                 let row_start = out_idx * old_in;
-                new_weights.extend_from_slice(&first.weights[row_start..row_start + expected_input]);
+                new_weights
+                    .extend_from_slice(&first.weights[row_start..row_start + expected_input]);
             }
             first.weights = new_weights;
             first.input_size = expected_input;
@@ -993,9 +1042,16 @@ fn aggregate_seed_results(results: &[SeedEpisodeSummary]) -> EvaluationSummary {
 
     let count = results.len() as f32;
     EvaluationSummary {
-        average_survival_time: results.iter().map(|result| result.survival_time).sum::<f32>()
+        average_survival_time: results
+            .iter()
+            .map(|result| result.survival_time)
+            .sum::<f32>()
             / count,
-        average_return: results.iter().map(|result| result.total_return).sum::<f32>() / count,
+        average_return: results
+            .iter()
+            .map(|result| result.total_return)
+            .sum::<f32>()
+            / count,
         average_evades: results.iter().map(|result| result.evades).sum::<f32>() / count,
         min_survival_time: results
             .iter()
@@ -1042,7 +1098,8 @@ fn evaluate_seed_batch_sequential(
     action_repeat: usize,
     model_type: ModelType,
 ) -> Vec<SeedEpisodeSummary> {
-    seeds.iter()
+    seeds
+        .iter()
         .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
         .collect()
 }
@@ -1053,12 +1110,18 @@ fn evaluate_seed_batch_parallel(
     action_repeat: usize,
     model_type: ModelType,
 ) -> Vec<SeedEpisodeSummary> {
-    seeds.par_iter()
+    seeds
+        .par_iter()
         .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
         .collect()
 }
 
-fn evaluate_seed(network: &Network, seed: u64, action_repeat: usize, model_type: ModelType) -> SeedEpisodeSummary {
+fn evaluate_seed(
+    network: &Network,
+    seed: u64,
+    action_repeat: usize,
+    model_type: ModelType,
+) -> SeedEpisodeSummary {
     let mut env = GameState::new(GameConfig::default(), Some(seed));
     let mut observation = ObsBuilderState::new(model_type);
     observation.reset(&env);
@@ -1273,5 +1336,72 @@ mod tests {
         let resume = validate_resume_model(&config, model).unwrap();
         assert_eq!(resume.completed_episodes, 10);
         assert_eq!(resume.total_steps, 500);
+    }
+
+    #[test]
+    fn training_loop_preserves_temporal_features() {
+        let config = TrainingConfig::default();
+        let mut env = GameState::new(GameConfig::default(), Some(42));
+        let mut observation = ObsBuilderState::new(config.model_type);
+        observation.reset(&env);
+
+        // Emulate fixed loop setup
+        let current_state = observation.build_vec(&env);
+
+        // Take a step that guarantees some movement
+        env.step_fixed(Action::ALL[1]);
+
+        let state = current_state.clone();
+
+        // Check delta of initial state is zero (vel_x and vel_y are at the end)
+        assert_eq!(
+            state[state.len() - 2],
+            0.0,
+            "initial x velocity should be 0"
+        );
+        assert_eq!(
+            state[state.len() - 1],
+            0.0,
+            "initial y velocity should be 0"
+        );
+
+        // Build post-step state ONCE
+        let next_state = observation.build_vec(&env);
+
+        // Ensure post-step state HAS delta
+        let n_vel_x = next_state[next_state.len() - 2];
+        let n_vel_y = next_state[next_state.len() - 1];
+        assert!(
+            n_vel_x != 0.0 || n_vel_y != 0.0,
+            "next_state should have non-zero velocity delta"
+        );
+
+        // Emulate fixed loop iteration 2: carry over next_state to state2
+        let state2 = next_state.clone();
+
+        // Verify state2 has the SAME delta as next_state (because it IS next_state)
+        assert_eq!(
+            state2[state2.len() - 2],
+            n_vel_x,
+            "state2 x vel should equal next_state x vel"
+        );
+        assert_eq!(
+            state2[state2.len() - 1],
+            n_vel_y,
+            "state2 y vel should equal next_state y vel"
+        );
+
+        // Emulate BUGGY loop behavior: rebuilding state against an already-advanced builder
+        let buggy_state2 = observation.build_vec(&env);
+        assert_eq!(
+            buggy_state2[buggy_state2.len() - 2],
+            0.0,
+            "buggy re-build zeroes x vel"
+        );
+        assert_eq!(
+            buggy_state2[buggy_state2.len() - 1],
+            0.0,
+            "buggy re-build zeroes y vel"
+        );
     }
 }

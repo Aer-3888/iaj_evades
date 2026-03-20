@@ -2,7 +2,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, RwLock,
     },
 };
 
@@ -14,6 +14,8 @@ pub struct TrainingManager {
     is_running: Arc<AtomicBool>,
     stop_signal: Arc<AtomicBool>,
     progress_tx: broadcast::Sender<TrainingProgress>,
+    active_config: Arc<RwLock<Option<TrainingConfig>>>,
+    active_resume_model: Arc<RwLock<Option<String>>>,
 }
 
 impl TrainingManager {
@@ -26,21 +28,28 @@ impl TrainingManager {
                 is_running: Arc::new(AtomicBool::new(false)),
                 stop_signal: Arc::new(AtomicBool::new(false)),
                 progress_tx: tx,
+                active_config: Arc::new(RwLock::new(None)),
+                active_resume_model: Arc::new(RwLock::new(None)),
             },
             rx,
         )
     }
 
-    pub fn start(&self, config: TrainingConfig, output_dir: PathBuf, resume_model: Option<SavedModel>) {
+    pub fn start(&self, config: TrainingConfig, output_dir: PathBuf, resume_model: Option<SavedModel>, resume_model_path: Option<String>) {
         if self.is_running.load(Ordering::SeqCst) {
             return;
         }
+
+        *self.active_config.write().unwrap() = Some(config.clone());
+        *self.active_resume_model.write().unwrap() = resume_model_path;
 
         self.is_running.store(true, Ordering::SeqCst);
         self.stop_signal.store(false, Ordering::SeqCst);
         let is_running = self.is_running.clone();
         let stop_signal = self.stop_signal.clone();
         let progress_tx = self.progress_tx.clone();
+        let active_config = self.active_config.clone();
+        let active_resume_model = self.active_resume_model.clone();
 
         // Use spawn_blocking because trainer::train is synchronous and CPU-bound
         tokio::task::spawn_blocking(move || {
@@ -57,6 +66,8 @@ impl TrainingManager {
 
             let result = train(config, &output_dir, resume_model, Some(tx), Some(stop_signal));
             is_running.store(false, Ordering::SeqCst);
+            *active_config.write().unwrap() = None;
+            *active_resume_model.write().unwrap() = None;
             
             if let Err(e) = result {
                 tracing::error!("Training failed: {:?}", e);
@@ -72,5 +83,11 @@ impl TrainingManager {
 
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::SeqCst)
+    }
+
+    pub fn get_active_config(&self) -> Option<(TrainingConfig, Option<String>)> {
+        let config = self.active_config.read().unwrap().clone();
+        let resume_model = self.active_resume_model.read().unwrap().clone();
+        config.map(|c| (c, resume_model))
     }
 }
