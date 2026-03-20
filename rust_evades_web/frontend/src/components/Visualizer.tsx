@@ -292,6 +292,7 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
         const dirY = -Math.sin(angle);
 
         let minNear = Infinity;
+        let hitIdx = -1;
 
         // Check enemies
         state.enemies.forEach((enemy, idx) => {
@@ -301,9 +302,13 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
           );
           if (dist !== null && dist < minNear) {
             minNear = dist;
-            hitByNear.add(idx);
+            hitIdx = idx;
           }
         });
+
+        if (hitIdx !== -1 && minNear <= nearRayLength) {
+          hitByNear.add(hitIdx);
+        }
 
         // Check walls in Closed mode
         if (config.map_design === 'Closed') {
