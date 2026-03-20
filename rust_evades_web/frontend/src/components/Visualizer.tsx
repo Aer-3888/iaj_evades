@@ -29,6 +29,8 @@ interface GameState {
     goal_width: number;
     start_margin: number;
     camera_lead: number;
+    show_raycast: boolean;
+    vision_only: boolean;
   };
   elapsed_time: number;
   enemies_evaded: number;
@@ -145,61 +147,174 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
       camY = 0;
     }
 
+    const pX = state.player.body.pos.x - camX;
+    const pY = state.player.body.pos.y - camY;
+
     // Background
     ctx.fillStyle = `rgb(${config.background_color.r}, ${config.background_color.g}, ${config.background_color.b})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (config.map_design === 'Open') {
-      // Grid for Open Map
-      ctx.strokeStyle = `rgb(${config.grid_color.r}, ${config.grid_color.g}, ${config.grid_color.b})`;
-      ctx.lineWidth = 1;
-      const spacing = config.grid_spacing || 64;
-      const offsetX = -((camX % spacing + spacing) % spacing);
-      const offsetY = -((camY % spacing + spacing) % spacing);
+    const drawWorld = () => {
+      if (config.map_design === 'Open') {
+        // Grid for Open Map
+        ctx.strokeStyle = `rgb(${config.grid_color.r}, ${config.grid_color.g}, ${config.grid_color.b})`;
+        ctx.lineWidth = 1;
+        const spacing = config.grid_spacing || 64;
+        const offsetX = -((camX % spacing + spacing) % spacing);
+        const offsetY = -((camY % spacing + spacing) % spacing);
 
+        ctx.beginPath();
+        for (let x = offsetX; x < canvas.width; x += spacing) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+        }
+        for (let y = offsetY; y < canvas.height; y += spacing) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+        }
+        ctx.stroke();
+      } else {
+        // Draw Closed map (corridor)
+        const corridorHeight = config.corridor_bottom - config.corridor_top;
+        ctx.fillStyle = 'rgba(40, 52, 68, 1)';
+        ctx.fillRect(0, config.corridor_top - camY, canvas.width, corridorHeight);
+        
+        ctx.fillStyle = 'rgba(90, 112, 138, 1)';
+        ctx.fillRect(0, config.corridor_top - camY, canvas.width, 3);
+        ctx.fillRect(0, config.corridor_bottom - 3 - camY, canvas.width, 3);
+
+        // Goal
+        const goalX = config.world_width - config.goal_width;
+        ctx.fillStyle = 'rgba(130, 218, 109, 0.5)';
+        ctx.fillRect(goalX - camX, config.corridor_top - camY, config.goal_width, corridorHeight);
+      }
+
+      // Enemies
+      ctx.fillStyle = `rgb(${config.enemy_color.r}, ${config.enemy_color.g}, ${config.enemy_color.b})`;
+      for (const enemy of state.enemies) {
+        const x = enemy.body.pos.x - camX;
+        const y = enemy.body.pos.y - camY;
+        ctx.beginPath();
+        ctx.arc(x, y, enemy.body.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    if (config.vision_only) {
+      const RAY_COUNT = 36;
+      const rayLength = state.player.body.radius * 5.0;
+      const originX = state.player.body.pos.x;
+      const originY = state.player.body.pos.y;
+
+      ctx.save();
       ctx.beginPath();
-      for (let x = offsetX; x < canvas.width; x += spacing) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+      ctx.moveTo(pX, pY);
+
+      for (let i = 0; i <= RAY_COUNT; i++) {
+        const angle = (i % RAY_COUNT) * (360 / RAY_COUNT) * (Math.PI / 180);
+        const dirX = Math.cos(angle);
+        const dirY = -Math.sin(angle);
+
+        let minDistance = Infinity;
+        for (const enemy of state.enemies) {
+          const dist = raycastCircleDistance(originX, originY, dirX, dirY, enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius);
+          if (dist !== null) minDistance = Math.min(minDistance, dist);
+        }
+        if (config.map_design === 'Closed') {
+          const topDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_top);
+          if (topDist !== null) minDistance = Math.min(minDistance, topDist);
+          const bottomDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_bottom);
+          if (bottomDist !== null) minDistance = Math.min(minDistance, bottomDist);
+          const leftDist = raycastVerticalLineDistance(originX, dirX, 0);
+          if (leftDist !== null) minDistance = Math.min(minDistance, leftDist);
+          const rightDist = raycastVerticalLineDistance(originX, dirX, config.world_width);
+          if (rightDist !== null) minDistance = Math.min(minDistance, rightDist);
+        }
+
+        const actualDistance = Math.min(minDistance, rayLength);
+        const endX = (originX + dirX * actualDistance) - camX;
+        const endY = (originY + dirY * actualDistance) - camY;
+        ctx.lineTo(endX, endY);
       }
-      for (let y = offsetY; y < canvas.height; y += spacing) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-      }
-      ctx.stroke();
+      ctx.closePath();
+      ctx.clip();
+      drawWorld();
+      ctx.restore();
     } else {
-      // Draw Closed map (corridor)
-      const corridorHeight = config.corridor_bottom - config.corridor_top;
-      ctx.fillStyle = 'rgba(40, 52, 68, 1)';
-      ctx.fillRect(0, config.corridor_top - camY, canvas.width, corridorHeight);
-      
-      ctx.fillStyle = 'rgba(90, 112, 138, 1)';
-      ctx.fillRect(0, config.corridor_top - camY, canvas.width, 3);
-      ctx.fillRect(0, config.corridor_bottom - 3 - camY, canvas.width, 3);
-
-      // Goal
-      const goalX = config.world_width - config.goal_width;
-      ctx.fillStyle = 'rgba(130, 218, 109, 0.5)';
-      ctx.fillRect(goalX - camX, config.corridor_top - camY, config.goal_width, corridorHeight);
-    }
-
-    // Enemies
-    ctx.fillStyle = `rgb(${config.enemy_color.r}, ${config.enemy_color.g}, ${config.enemy_color.b})`;
-    for (const enemy of state.enemies) {
-      const x = enemy.body.pos.x - camX;
-      const y = enemy.body.pos.y - camY;
-      ctx.beginPath();
-      ctx.arc(x, y, enemy.body.radius, 0, Math.PI * 2);
-      ctx.fill();
+      drawWorld();
     }
 
     // Player
     ctx.fillStyle = `rgb(${config.player_color.r}, ${config.player_color.g}, ${config.player_color.b})`;
-    const pX = state.player.body.pos.x - camX;
-    const pY = state.player.body.pos.y - camY;
     ctx.beginPath();
     ctx.arc(pX, pY, state.player.body.radius, 0, Math.PI * 2);
     ctx.fill();
+
+    // Raycasting Visualization
+    if (config.show_raycast) {
+      const RAY_COUNT = 36;
+      const rayLength = state.player.body.radius * 5.0;
+      const originX = state.player.body.pos.x;
+      const originY = state.player.body.pos.y;
+
+      ctx.save();
+      ctx.lineWidth = 2; // Increased from 1 to 2
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(250, 204, 21, 0.4)';
+
+      for (let i = 0; i < RAY_COUNT; i++) {
+        const angle = i * (360 / RAY_COUNT) * (Math.PI / 180);
+        const dirX = Math.cos(angle);
+        const dirY = -Math.sin(angle);
+
+        let minDistance = Infinity;
+
+        // Check enemies
+        for (const enemy of state.enemies) {
+          const dist = raycastCircleDistance(
+            originX, originY, dirX, dirY,
+            enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius
+          );
+          if (dist !== null) minDistance = Math.min(minDistance, dist);
+        }
+
+        // Check walls in Closed mode
+        if (config.map_design === 'Closed') {
+          const topDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_top);
+          if (topDist !== null) minDistance = Math.min(minDistance, topDist);
+
+          const bottomDist = raycastHorizontalLineDistance(originY, dirY, config.corridor_bottom);
+          if (bottomDist !== null) minDistance = Math.min(minDistance, bottomDist);
+
+          const leftDist = raycastVerticalLineDistance(originX, dirX, 0);
+          if (leftDist !== null) minDistance = Math.min(minDistance, leftDist);
+
+          const rightDist = raycastVerticalLineDistance(originX, dirX, config.world_width);
+          if (rightDist !== null) minDistance = Math.min(minDistance, rightDist);
+        }
+
+        const actualDistance = Math.min(minDistance, rayLength);
+        const endX = (originX + dirX * actualDistance) - camX;
+        const endY = (originY + dirY * actualDistance) - camY;
+
+        // Draw ray
+        const alpha = 1.0 - (actualDistance / rayLength);
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.3 + alpha * 0.7})`;
+        ctx.beginPath();
+        ctx.moveTo(pX, pY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Draw hit point
+        if (minDistance <= rayLength) {
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.arc(endX, endY, 3, 0, Math.PI * 2); // Increased from 2 to 3
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
 
     // Overlay
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -235,4 +350,37 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
       }}
     />
   );
+}
+
+// Raycasting Utilities (Ported from Rust sensing.rs)
+function raycastHorizontalLineDistance(originY: number, dirY: number, lineY: number): number | null {
+  if (Math.abs(dirY) < 1e-6) return null;
+  const t = (lineY - originY) / dirY;
+  return t > 0 ? t : null;
+}
+
+function raycastVerticalLineDistance(originX: number, dirX: number, lineX: number): number | null {
+  if (Math.abs(dirX) < 1e-6) return null;
+  const t = (lineX - originX) / dirX;
+  return t > 0 ? t : null;
+}
+
+function raycastCircleDistance(
+  originX: number, originY: number,
+  dirX: number, dirY: number,
+  centerX: number, centerY: number,
+  radius: number
+): number | null {
+  const offsetX = originX - centerX;
+  const offsetY = originY - centerY;
+  const projection = offsetX * dirX + offsetY * dirY;
+  const c = offsetX * offsetX + offsetY * offsetY - radius * radius;
+
+  if (c > 0 && projection > 0) return null;
+
+  const discriminant = projection * projection - c;
+  if (discriminant < 0) return null;
+
+  let distance = -projection - Math.sqrt(discriminant);
+  return distance < 0 ? 0 : distance;
 }

@@ -8,7 +8,8 @@
 
 - [x] Log les infos de chaque run
 - [x] Pouvoir choisir la seed du run
-- [ ] Visualiser le raycasting
+- [x] Visualiser le raycasting
+- [x] Vision Only Mode (Fog of War)
 - [x] Page d'évaluation de l'ia
 - [ ] Pouvoir resume un training avec un modèle
 - [x] Pouvoir écrire des valeurs au lieu des sliders

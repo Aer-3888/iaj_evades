@@ -13,6 +13,8 @@ interface GameConfig {
   enemy_spawn_interval_min: number;
   enemy_spawn_interval_max: number;
   default_seed: number;
+  show_raycast: boolean;
+  vision_only: boolean;
 }
 
 export default function SettingsPanel() {
@@ -127,6 +129,32 @@ export default function SettingsPanel() {
                       Random
                     </button>
                 </div>
+              </div>
+              <div className="space-y-4">
+                <label className="text-sm font-medium text-slate-400">Raycasting Visualization</label>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setConfig({...config, show_raycast: !config.show_raycast})}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${config.show_raycast ? 'bg-blue-600' : 'bg-slate-800'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${config.show_raycast ? 'left-7' : 'left-1'}`} />
+                  </button>
+                  <span className="text-sm text-slate-300">{config.show_raycast ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <p className="text-xs text-slate-500 italic">Visualize the AI's "vision" rays in the simulation.</p>
+              </div>
+              <div className="space-y-4">
+                <label className="text-sm font-medium text-slate-400">Vision Only Mode</label>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setConfig({...config, vision_only: !config.vision_only})}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${config.vision_only ? 'bg-blue-600' : 'bg-slate-800'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${config.vision_only ? 'left-7' : 'left-1'}`} />
+                  </button>
+                  <span className="text-sm text-slate-300">{config.vision_only ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <p className="text-xs text-slate-500 italic">Hide everything except what's directly visible to the AI agent.</p>
               </div>
             </div>
           </section>

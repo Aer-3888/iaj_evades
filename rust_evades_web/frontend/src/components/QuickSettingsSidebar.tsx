@@ -13,6 +13,8 @@ interface GameConfig {
   enemy_spawn_interval_max: number;
   default_seed: number;
   render_fps: number;
+  show_raycast: boolean;
+  vision_only: boolean;
 }
 
 export default function QuickSettingsSidebar() {
@@ -76,6 +78,24 @@ export default function QuickSettingsSidebar() {
             min={10} max={240} step={1}
             onChange={(v) => handleUpdate({...config, render_fps: v})}
           />
+          <div className="flex items-center justify-between pt-2">
+            <label className="text-[11px] font-medium text-slate-400">Show Raycasting</label>
+            <button
+              onClick={() => handleUpdate({...config, show_raycast: !config.show_raycast})}
+              className={`w-8 h-4 rounded-full transition-colors relative ${config.show_raycast ? 'bg-blue-600' : 'bg-slate-800'}`}
+            >
+              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.show_raycast ? 'left-4.5' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <label className="text-[11px] font-medium text-slate-400">Vision Only Mode</label>
+            <button
+              onClick={() => handleUpdate({...config, vision_only: !config.vision_only})}
+              className={`w-8 h-4 rounded-full transition-colors relative ${config.vision_only ? 'bg-blue-600' : 'bg-slate-800'}`}
+            >
+              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.vision_only ? 'left-4.5' : 'left-0.5'}`} />
+            </button>
+          </div>
         </section>
 
         {/* Map Design */}
