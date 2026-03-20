@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 
 type MessageType = 'Game' | 'Training' | 'Evaluation' | 'Log' | 'Status';
 
@@ -9,6 +9,7 @@ interface SocketMessage {
 
 interface SocketContextType {
   isConnected: boolean;
+  isReconnecting: boolean;
   sendMessage: (msg: any) => void;
   subscribe: (type: MessageType, callback: (data: any) => void) => () => void;
 }
@@ -21,9 +22,27 @@ export const useSocket = () => {
   return context;
 };
 
+function getWsUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  let host = window.location.host;
+  // If we're on Vite's dev server (usually 5173), connect to the backend (usually 8080)
+  if (host.includes(':5173')) {
+    host = host.replace(':5173', ':8080');
+  }
+  return `${protocol}//${host}/ws`;
+}
+
+const MIN_RECONNECT_DELAY_MS = 2_000;
+const MAX_RECONNECT_DELAY_MS = 10_000;
+
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectDelayRef = useRef(MIN_RECONNECT_DELAY_MS);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unmountedRef = useRef(false);
+
   const subscribersRef = useRef<Record<string, Set<(data: any) => void>>>({
     Game: new Set(),
     Training: new Set(),
@@ -32,22 +51,37 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     Status: new Set(),
   });
 
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let host = window.location.host;
-    
-    // If we're on Vite's dev server (usually 5173), we want to connect to the backend (usually 8080)
-    if (host.includes(':5173')) {
-      host = host.replace(':5173', ':8080');
-    }
-    
-    const wsUrl = `${protocol}//${host}/ws`;
+  const connect = useCallback(() => {
+    if (unmountedRef.current) return;
+
+    const wsUrl = getWsUrl();
     console.log('Connecting to WebSocket:', wsUrl);
     const s = new WebSocket(wsUrl);
-    setSocket(s);
+    socketRef.current = s;
 
-    s.onopen = () => setIsConnected(true);
-    s.onclose = () => setIsConnected(false);
+    s.onopen = () => {
+      if (unmountedRef.current) { s.close(); return; }
+      setIsConnected(true);
+      setIsReconnecting(false);
+      // Reset backoff on successful connection
+      reconnectDelayRef.current = MIN_RECONNECT_DELAY_MS;
+    };
+
+    s.onclose = () => {
+      if (unmountedRef.current) return;
+      setIsConnected(false);
+      // Schedule reconnect with exponential back-off
+      const delay = reconnectDelayRef.current;
+      reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_DELAY_MS);
+      console.warn(`WebSocket closed. Reconnecting in ${delay / 1000}s…`);
+      setIsReconnecting(true);
+      reconnectTimerRef.current = setTimeout(connect, delay);
+    };
+
+    s.onerror = () => {
+      // onclose will fire after onerror, so let that handle reconnection.
+    };
+
     s.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
@@ -59,15 +93,24 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Failed to parse socket message', e);
       }
     };
-
-    return () => {
-      s.close();
-    };
   }, []);
 
+  useEffect(() => {
+    unmountedRef.current = false;
+    connect();
+    return () => {
+      unmountedRef.current = true;
+      if (reconnectTimerRef.current !== null) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      socketRef.current?.close();
+    };
+  }, [connect]);
+
   const sendMessage = (msg: any) => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(msg));
+    const s = socketRef.current;
+    if (s?.readyState === WebSocket.OPEN) {
+      s.send(JSON.stringify(msg));
     }
   };
 
@@ -79,7 +122,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   return (
-    <SocketContext.Provider value={{ isConnected, sendMessage, subscribe }}>
+    <SocketContext.Provider value={{ isConnected, isReconnecting, sendMessage, subscribe }}>
       {children}
     </SocketContext.Provider>
   );

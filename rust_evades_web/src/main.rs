@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU8;
 use tokio::sync::broadcast;
 use tower_http::{cors::Any, cors::CorsLayer, services::ServeDir};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 mod training_manager;
 mod cmd_runner;
@@ -65,13 +65,21 @@ struct EngineStatus {
 
 #[tokio::main]
 async fn main() {
+    // Default to WARN for all third-party crates (axum, hyper, tokio, tower…) and
+    // INFO for our own code. RUST_LOG environment variable always overrides this.
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("warn,rust_evades_web=info,rust_evades_dqn=info,rust_evades=info")
+    });
     tracing_subscriber::registry()
+        .with(filter)
         .with(tracing_subscriber::fmt::layer())
         .init();
 
     let config = GameConfig::default();
     let game_state = GameState::new(config.clone(), None);
-    let (tx_broadcast, _) = broadcast::channel(100);
+    // Large channel buffer prevents overflow/Lagged errors when training produces
+    // many messages rapidly and the WebSocket consumer falls slightly behind.
+    let (tx_broadcast, _) = broadcast::channel(512);
     let (training_manager, mut training_rx) = TrainingManager::new();
     let (evaluation_manager, mut evaluation_rx) = EvaluationManager::new();
     let (cmd_runner, mut log_rx) = CmdRunner::new();
@@ -135,6 +143,11 @@ async fn main() {
     // Spawn game loop
     let state_clone = state.clone();
     tokio::spawn(async move {
+        // Status is cheap but sending it every tick at 60 Hz wastes channel slots.
+        // We throttle it to at most once every ~120 ticks (~2 s at 60 fps).
+        const STATUS_SEND_EVERY_N_TICKS: u32 = 120;
+        let mut tick_count: u32 = 0;
+
         loop {
             let fps = state_clone.game_state.read().unwrap().config.render_fps;
             let tick_duration = Duration::from_millis(1000 / fps.max(1));
@@ -207,16 +220,18 @@ async fn main() {
             let msg = HubMessage::Game(gs.clone());
             let _ = state_clone.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
 
-            // Periodically broadcast status
-            let status = {
-                EngineStatus {
+            // Send Status far less frequently (~2 s) to reduce channel pressure.
+            tick_count += 1;
+            if tick_count >= STATUS_SEND_EVERY_N_TICKS {
+                tick_count = 0;
+                let status = EngineStatus {
                     running: state_clone.running.load(Ordering::SeqCst),
                     ai_mode: state_clone.ai_mode.load(Ordering::SeqCst),
                     has_model: state_clone.model.read().unwrap().is_some(),
-                }
-            };
-            let status_msg = HubMessage::Status(status);
-            let _ = state_clone.tx_broadcast.send(serde_json::to_string(&status_msg).unwrap());
+                };
+                let status_msg = HubMessage::Status(status);
+                let _ = state_clone.tx_broadcast.send(serde_json::to_string(&status_msg).unwrap());
+            }
         }
     });
 
@@ -408,9 +423,23 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let mut rx_broadcast = state.tx_broadcast.subscribe();
 
     let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx_broadcast.recv().await {
-            if sender.send(Message::Text(msg)).await.is_err() {
-                break;
+        loop {
+            match rx_broadcast.recv().await {
+                Ok(msg) => {
+                    if sender.send(Message::Text(msg)).await.is_err() {
+                        // Client disconnected — stop the sender task.
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    // We fell behind by `n` messages (channel full). Skip them and
+                    // keep running — no reason to kill the connection.
+                    tracing::warn!("WebSocket broadcast lagged, skipped {} messages", n);
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    // Sender dropped — nothing left to receive.
+                    break;
+                }
             }
         }
     });
