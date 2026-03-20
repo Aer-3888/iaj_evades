@@ -15,3 +15,6 @@
 - [x] Pouvoir écrire des valeurs au lieu des sliders
 - [x] Pouvoir changer la vitesse de jeu
 - [x] Side menu avec les settings pour plus vite
+- [x] Flashlight mode
+- [ ] Fullscreen game mode
+- [ ] Seed finder tab pour trouver les seeds stylés
