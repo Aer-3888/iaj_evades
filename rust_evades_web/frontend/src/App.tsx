@@ -49,7 +49,7 @@ function AppContent() {
     });
 
     const unsubTraining = subscribe('Training', (data: TrainingProgress) => {
-      setTrainingHistory(prev => [...prev.slice(-99), data]);
+      setTrainingHistory(prev => [...prev, data]);
     });
 
     const checkTrainingStatus = async () => {
@@ -62,6 +62,19 @@ function AppContent() {
       }
     };
 
+    const fetchTrainingHistory = async () => {
+      try {
+        const res = await fetch('/api/train/history');
+        const history: TrainingProgress[] = await res.json();
+        if (history.length > 0) {
+          setTrainingHistory(history);
+        }
+      } catch (e) {
+        console.error('Failed to fetch training history', e);
+      }
+    };
+
+    fetchTrainingHistory();
     checkTrainingStatus();
     const interval = setInterval(checkTrainingStatus, 2000);
 
