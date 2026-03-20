@@ -19,3 +19,4 @@
 - [x] Fullscreen game mode
 - [x] Seed history log
 - [ ] Seed finder tab pour trouver les seeds stylés
+- [ ] Rolling average of performance by steps
