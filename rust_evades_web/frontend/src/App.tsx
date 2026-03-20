@@ -37,7 +37,7 @@ export interface TrainingProgress {
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<'game' | 'train' | 'eval' | 'settings'>('game')
-  const { isConnected, sendMessage, subscribe } = useSocket()
+  const { isConnected, isReconnecting, sendMessage, subscribe } = useSocket()
   const [status, setStatus] = useState<EngineStatus>({ running: false, ai_mode: false, has_model: false })
   const [trainingHistory, setTrainingHistory] = useState<TrainingProgress[]>([])
   const [isTraining, setIsTraining] = useState(false)
@@ -177,8 +177,8 @@ function AppContent() {
                     <div className="bg-slate-900 p-4 rounded-lg border border-slate-800">
                         <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-tighter">System Status</h3>
                         <div className="space-y-3">
-                            <div className={`${isConnected ? 'text-emerald-500' : 'text-rose-500'} text-[10px] flex items-center font-mono uppercase`}>
-                                <span className={`mr-2 ${isConnected ? 'animate-pulse' : ''}`}>●</span> WS_{isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                            <div className={`${isConnected ? 'text-emerald-500' : isReconnecting ? 'text-amber-400' : 'text-rose-500'} text-[10px] flex items-center font-mono uppercase`}>
+                                <span className={`mr-2 ${isConnected || isReconnecting ? 'animate-pulse' : ''}`}>●</span> WS_{isConnected ? 'CONNECTED' : isReconnecting ? 'RECONNECTING' : 'DISCONNECTED'}
                             </div>
                             <div className={`${status.running ? 'text-blue-500' : 'text-slate-500'} text-[10px] flex items-center font-mono uppercase`}>
                                 <span className="mr-2">●</span> ENGINE_{status.running ? 'RUNNING_60HZ' : 'PAUSED'}
