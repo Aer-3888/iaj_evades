@@ -176,6 +176,14 @@ async fn main() {
                         Some(rng.random::<u64>())
                     };
                     gs.reset(seed);
+                    
+                    let log = LogLine {
+                        stream: "system".to_string(),
+                        text: format!("[SEED] Simulation reset with seed: {}", gs.base_seed),
+                    };
+                    let msg = HubMessage::Log(log);
+                    let _ = state_clone.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
+
                     state_clone.obs_builder.write().unwrap().reset(&gs);
                 }
             }
@@ -391,6 +399,14 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     Some(rng.random::<u64>())
                                 };
                                 gs.reset(seed);
+
+                                let log = LogLine {
+                                    stream: "system".to_string(),
+                                    text: format!("[SEED] Manual reset with seed: {}", gs.base_seed),
+                                };
+                                let msg = HubMessage::Log(log);
+                                let _ = state_clone.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
+
                                 state_clone.obs_builder.write().unwrap().reset(&gs);
                             }
                             WebControl::ToggleAI => {
@@ -434,7 +450,26 @@ async fn update_config(
 ) -> impl IntoResponse {
     let mut gs = state.game_state.write().unwrap();
     gs.config = new_config;
-    gs.reset(None);
+    
+    let seed = if gs.config.default_seed != 0 {
+        Some(gs.config.default_seed)
+    } else {
+        use rand::RngExt;
+        let mut rng = rand::rng();
+        Some(rng.random::<u64>())
+    };
+    
+    gs.reset(seed);
+
+    state.obs_builder.write().unwrap().reset(&gs);
+
+    let log = LogLine {
+        stream: "system".to_string(),
+        text: format!("[CONFIG] Applied changes. Seed: {}", gs.base_seed),
+    };
+    let msg = HubMessage::Log(log);
+    let _ = state.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
+
     "ok"
 }
 
