@@ -105,8 +105,8 @@ function AppContent() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative min-w-0 overflow-hidden">
         <header className="h-12 border-b border-slate-800 flex items-center px-6 bg-slate-900 justify-between relative z-[60] pointer-events-auto">
-          <h1 className="font-semibold text-slate-300 uppercase tracking-widest text-sm">
-            Evades {activeTab === 'game' ? ':: Simulation' : `:: ${activeTab.toUpperCase()}`}
+          <h1 className="font-bold text-slate-200 text-base">
+            {activeTab === 'game' ? 'Simulation' : activeTab === 'train' ? 'Training' : 'Settings'}
           </h1>
           {activeTab === 'game' && (
             <div className="flex items-center space-x-4">
