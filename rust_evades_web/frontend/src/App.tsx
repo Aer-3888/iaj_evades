@@ -5,7 +5,8 @@ import TrainingPanel from './components/TrainingPanel'
 import EvaluationPanel from './components/EvaluationPanel'
 import Console from './components/Console'
 import ModelSelector from './components/ModelSelector'
-import { Activity, Settings, Play, Pause, RotateCcw, Brain, User, CheckSquare } from 'lucide-react'
+import QuickSettingsSidebar from './components/QuickSettingsSidebar'
+import { Activity, Settings, Play, Pause, RotateCcw, Brain, User, CheckSquare, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { SocketProvider, useSocket } from './contexts/SocketContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ToastContainer from './components/Toast'
@@ -40,6 +41,7 @@ function AppContent() {
   const [status, setStatus] = useState<EngineStatus>({ running: false, ai_mode: false, has_model: false })
   const [trainingHistory, setTrainingHistory] = useState<TrainingProgress[]>([])
   const [isTraining, setIsTraining] = useState(false)
+  const [showSidebar, setShowSidebar] = useState(true)
 
   useEffect(() => {
     const unsubStatus = subscribe('Status', (data: EngineStatus) => {
@@ -119,6 +121,15 @@ function AppContent() {
           </h1>
           {activeTab === 'game' && (
             <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => setShowSidebar(!showSidebar)}
+                className={`p-1.5 rounded-md transition flex items-center space-x-2 text-xs relative z-[70] ${showSidebar ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-400'}`}
+                title={showSidebar ? "Hide Config" : "Show Config"}
+              >
+                {showSidebar ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+                <span>{showSidebar ? 'HIDE PANEL' : 'SHOW PANEL'}</span>
+              </button>
+              <div className="w-px h-6 bg-slate-800 mx-2" />
               <button 
                 onClick={resetGame}
                 className="p-1.5 hover:bg-slate-800 rounded-md text-slate-400 transition flex items-center space-x-2 text-xs relative z-[70]"
@@ -203,6 +214,9 @@ function AppContent() {
           )}
         </div>
       </main>
+
+      {/* Right Sidebar */}
+      {activeTab === 'game' && showSidebar && <QuickSettingsSidebar />}
     </div>
   )
 }
