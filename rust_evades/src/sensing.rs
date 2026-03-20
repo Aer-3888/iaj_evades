@@ -67,11 +67,11 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
     let max_distance = state.config.ray_length().max(1.0);
 
     for (index, sample) in samples.iter_mut().enumerate() {
-        let angle = (index as f32) * 10.0_f32.to_radians();
+        let angle = (index as f32) * (360.0 / RAY_COUNT as f32).to_radians();
         let dir_x = angle.cos();
         let dir_y = -angle.sin();
 
-        let enemy_distance = state
+        let mut min_distance = state
             .enemies
             .iter()
             .filter_map(|enemy| {
@@ -87,8 +87,26 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
             })
             .fold(f32::INFINITY, f32::min);
 
-        let clearance = (enemy_distance - state.player.body.radius).clamp(0.0, max_distance);
-        *sample = if enemy_distance.is_finite() {
+        if state.config.map_design == crate::config::MapDesign::Closed {
+            // Horizontal walls (Top/Bottom)
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+                min_distance = min_distance.min(d);
+            }
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+                min_distance = min_distance.min(d);
+            }
+
+            // Vertical walls (Left/Right)
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
+                min_distance = min_distance.min(d);
+            }
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+                min_distance = min_distance.min(d);
+            }
+        }
+
+        let clearance = (min_distance - state.player.body.radius).clamp(0.0, max_distance);
+        *sample = if min_distance.is_finite() {
             (clearance / max_distance).clamp(0.0, 1.0)
         } else {
             1.0
@@ -96,6 +114,30 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
     }
 
     samples
+}
+
+fn raycast_horizontal_line_distance(origin_y: f32, dir_y: f32, line_y: f32) -> Option<f32> {
+    if dir_y.abs() < 1e-6 {
+        return None;
+    }
+    let t = (line_y - origin_y) / dir_y;
+    if t > 0.0 {
+        Some(t)
+    } else {
+        None
+    }
+}
+
+fn raycast_vertical_line_distance(origin_x: f32, dir_x: f32, line_x: f32) -> Option<f32> {
+    if dir_x.abs() < 1e-6 {
+        return None;
+    }
+    let t = (line_x - origin_x) / dir_x;
+    if t > 0.0 {
+        Some(t)
+    } else {
+        None
+    }
 }
 
 fn raycast_circle_distance(
@@ -183,5 +225,36 @@ mod tests {
 
         let rays = sample_rays(&state);
         approx_eq(rays[0], 1.0);
+    }
+
+    #[test]
+    fn ray_detects_walls_in_closed_mode() {
+        use crate::config::MapDesign;
+        let mut state = GameState::new(GameConfig::default(), Some(2));
+        state.config.map_design = MapDesign::Closed;
+        state.enemies.clear();
+
+        // Position player exactly 32 units from the top wall
+        // corridor_top is 60.0. Player radius is 16.0.
+        // If player.y = 92.0, distance to wall is 32.0.
+        // Clearance = 32.0 - 16.0 = 16.0.
+        // ray_length = 16.0 * 5.0 = 80.0.
+        // Sample = 16.0 / 80.0 = 0.2.
+        state.player.body.pos = Vec2 { x: 100.0, y: 92.0 };
+        
+        let rays = sample_rays(&state);
+        
+        // Ray index for 90 degrees (up) is RAY_COUNT / 4
+        // RAY_COUNT = 36. 36 / 4 = 9.
+        // dir_y = -sin(90) = -1.0. 
+        // t = (60.0 - 92.0) / -1.0 = 32.0.
+        approx_eq(rays[9], 0.2);
+
+        // Position player 32 units from bottom wall (440.0)
+        // y = 408.0. t = (440.0 - 408.0) / 1.0 = 32.0.
+        // Ray index for 270 degrees (down) is 27.
+        state.player.body.pos = Vec2 { x: 100.0, y: 408.0 };
+        let rays = sample_rays(&state);
+        approx_eq(rays[27], 0.2);
     }
 }
