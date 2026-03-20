@@ -1,4 +1,4 @@
-import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy, Settings2, FileJson, RefreshCw, X, Check } from 'lucide-react'
+import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy, Settings2, FileJson, RefreshCw, X, Check, AlertTriangle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import StatCard from './StatCard';
@@ -12,6 +12,7 @@ interface Props {
 }
 
 interface TrainingConfig {
+  model_type: 'dqn' | 'dqn2';
   episodes: number;
   trainer_seed: number;
   learning_rate: number;
@@ -33,6 +34,7 @@ interface TrainingConfig {
 }
 
 const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
+  model_type: 'dqn',
   episodes: 100000,
   trainer_seed: 7,
   learning_rate: 0.0003,
@@ -53,13 +55,34 @@ const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
   action_repeat: 2,
 };
 
+interface ModelInfo {
+  name: string;
+  path: string;
+  model_type: string;
+}
+
+function ModelTypeBadge({ type }: { type: string }) {
+  const isDqn2 = type === 'dqn2';
+  return (
+    <span className={`ml-2 shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+      isDqn2
+        ? 'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+        : 'bg-emerald-900/40 text-emerald-400 border border-emerald-700/40'
+    }`}>
+      {isDqn2 ? 'DQN2' : 'DQN'}
+    </span>
+  );
+}
+
 export default function TrainingPanel({ history, isRunning, setIsRunning }: Props) {
   const { showToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<TrainingConfig>(DEFAULT_TRAINING_CONFIG);
   const [resumeModelPath, setResumeModelPath] = useState<string | null>(null);
-  const [models, setModels] = useState<{name: string, path: string}[]>([]);
+  const [resumeModelType, setResumeModelType] = useState<string | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [pendingCrossTypeStart, setPendingCrossTypeStart] = useState(false);
 
   const fetchModels = async () => {
     setLoadingModels(true);
@@ -78,21 +101,12 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     if (showSettings) fetchModels();
   }, [showSettings]);
 
-  const latest = history[history.length - 1] || {
-    episode: 0,
-    total_steps: 0,
-    epsilon: 1,
-    avg_survival: 0,
-    min_survival: 0,
-    avg_return: 0,
-    avg_evades: 0,
-    steps_per_second: 0,
-    timeouts: 0,
-    loss: 0,
-    global_best_survival: 0
-  };
+  const isCrossTypeResume =
+    resumeModelPath !== null &&
+    resumeModelType !== null &&
+    resumeModelType !== config.model_type.toLowerCase();
 
-  const handleStart = async () => {
+  const doStart = async () => {
     try {
       const res = await fetch('/api/train/start', { 
         method: 'POST',
@@ -108,7 +122,31 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
       }
     } catch (e) {
       showToast('Failed to start training session', 'error');
+    } finally {
+      setPendingCrossTypeStart(false);
     }
+  };
+
+  const latest = history[history.length - 1] || {
+    episode: 0,
+    total_steps: 0,
+    epsilon: 1,
+    avg_survival: 0,
+    min_survival: 0,
+    avg_return: 0,
+    avg_evades: 0,
+    steps_per_second: 0,
+    timeouts: 0,
+    loss: 0,
+    global_best_survival: 0
+  };
+
+  const handleStart = async () => {
+    if (isCrossTypeResume) {
+      setPendingCrossTypeStart(true);
+      return;
+    }
+    await doStart();
   };
 
   const handleStop = async () => {
@@ -130,8 +168,52 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     }
   };
 
+  const selectResume = (model: ModelInfo) => {
+    if (resumeModelPath === model.path) {
+      setResumeModelPath(null);
+      setResumeModelType(null);
+    } else {
+      setResumeModelPath(model.path);
+      setResumeModelType(model.model_type);
+    }
+  };
+
+  const configModelTypeLower = config.model_type.toLowerCase();
+
   return (
     <div className="space-y-6">
+      {/* Cross-type resume warning dialog */}
+      {pendingCrossTypeStart && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-amber-700/60 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-start mb-4">
+              <AlertTriangle className="text-amber-400 mr-3 mt-0.5 shrink-0" size={20} />
+              <div>
+                <h3 className="font-bold text-amber-400 text-base mb-1">Model type mismatch</h3>
+                <p className="text-sm text-slate-300">
+                  You're resuming a <span className="font-mono font-bold text-emerald-400">{(resumeModelType ?? '').toUpperCase()}</span> model but training as <span className="font-mono font-bold text-purple-400">{config.model_type.toUpperCase()}</span>.
+                  The extra input weights will be initialised to <strong>zero</strong>. The model may need many episodes to recover.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPendingCrossTypeStart(false)}
+                className="px-4 py-2 text-sm rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={doStart}
+                className="px-4 py-2 text-sm rounded-lg bg-amber-600 hover:bg-amber-500 font-bold text-white transition"
+              >
+                Proceed anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
         <div className="flex items-center justify-between p-6">
           <div>
@@ -186,6 +268,34 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
             <div className="space-y-4">
                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Core Parameters</h3>
                <div className="space-y-3">
+                 {/* Model Type Selector */}
+                 <div className="space-y-1">
+                   <label className="text-xs font-medium text-slate-500">Model Type</label>
+                   <div className="flex rounded overflow-hidden border border-slate-800">
+                     <button
+                       onClick={() => setConfig({...config, model_type: 'dqn'})}
+                       className={`flex-1 py-1.5 text-xs font-bold transition ${config.model_type === 'dqn' ? 'bg-emerald-700 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                     >
+                       DQN <span className="font-normal opacity-60 text-[10px]">(1 pass)</span>
+                     </button>
+                     <button
+                       onClick={() => setConfig({...config, model_type: 'dqn2'})}
+                       className={`flex-1 py-1.5 text-xs font-bold transition ${config.model_type === 'dqn2' ? 'bg-purple-700 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                     >
+                       DQN2 <span className="font-normal opacity-60 text-[10px]">(2 passes)</span>
+                     </button>
+                   </div>
+                   {config.model_type === 'dqn2' && (
+                     <p className="text-[10px] text-purple-300/70 italic">
+                       Near + far raycast (146 inputs vs. 74). Longer to train.
+                     </p>
+                   )}
+                   {isCrossTypeResume && (
+                     <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                       <AlertTriangle size={10} /> Resume model is {(resumeModelType ?? '').toUpperCase()} — weights will be zero-padded.
+                     </p>
+                   )}
+                 </div>
                  <SettingInput 
                     label="Total Episodes" 
                     value={config.episodes} 
@@ -259,7 +369,7 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                </div>
             </div>
 
-            <div className="border-t border-slate-800 pt-6">
+            <div className="border-t border-slate-800 pt-6 md:col-span-3">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resume from model (Optional)</h3>
                   <button 
@@ -279,33 +389,49 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-800/50">
-                        {models.map((model) => (
-                          <button
-                            key={model.path}
-                            onClick={() => setResumeModelPath(model.path === resumeModelPath ? null : model.path)}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-left transition hover:bg-slate-800/50 ${resumeModelPath === model.path ? 'bg-blue-900/20' : ''}`}
-                          >
-                            <div className="flex items-center min-w-0 mr-4">
-                              <FileJson size={14} className={`mr-2 shrink-0 ${resumeModelPath === model.path ? 'text-blue-400' : 'text-slate-500'}`} />
-                              <span className={`text-[11px] truncate ${resumeModelPath === model.path ? 'text-blue-300 font-medium' : 'text-slate-300'}`}>
-                                {model.name}
-                              </span>
-                            </div>
-                            {resumeModelPath === model.path && (
-                              <div className="text-blue-400">
-                                <Check size={12} />
+                        {models.map((model) => {
+                          const isSelected = resumeModelPath === model.path;
+                          const typeMismatch = isSelected && model.model_type !== configModelTypeLower;
+                          return (
+                            <button
+                              key={model.path}
+                              onClick={() => selectResume(model)}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-left transition hover:bg-slate-800/50 ${
+                                isSelected ? (typeMismatch ? 'bg-amber-900/20' : 'bg-blue-900/20') : ''
+                              }`}
+                            >
+                              <div className="flex items-center min-w-0 mr-4">
+                                <FileJson size={14} className={`mr-2 shrink-0 ${isSelected ? (typeMismatch ? 'text-amber-400' : 'text-blue-400') : 'text-slate-500'}`} />
+                                <span className={`text-[11px] truncate ${isSelected ? (typeMismatch ? 'text-amber-300 font-medium' : 'text-blue-300 font-medium') : 'text-slate-300'}`}>
+                                  {model.name}
+                                </span>
+                                <ModelTypeBadge type={model.model_type} />
                               </div>
-                            )}
-                          </button>
-                        ))}
+                              {isSelected && (
+                                <div className={typeMismatch ? 'text-amber-400' : 'text-blue-400'}>
+                                  {typeMismatch ? <AlertTriangle size={12} /> : <Check size={12} />}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
                </div>
                {resumeModelPath && (
-                 <div className="mt-2 flex items-center justify-between bg-blue-950/20 border border-blue-900/30 rounded-md px-2 py-1">
-                    <span className="text-[10px] text-blue-400 font-mono truncate mr-2">SELECTED: {resumeModelPath.split('/').pop()}</span>
-                    <button onClick={() => setResumeModelPath(null)} className="text-blue-400 hover:text-blue-300"><X size={12}/></button>
+                 <div className={`mt-2 flex items-center justify-between rounded-md px-2 py-1 border ${
+                   isCrossTypeResume
+                     ? 'bg-amber-950/20 border-amber-900/30'
+                     : 'bg-blue-950/20 border-blue-900/30'
+                 }`}>
+                    <span className={`text-[10px] font-mono truncate mr-2 ${isCrossTypeResume ? 'text-amber-400' : 'text-blue-400'}`}>
+                      {isCrossTypeResume ? '⚠ TYPE MISMATCH: ' : 'SELECTED: '}
+                      {resumeModelPath.split('/').pop()}
+                    </span>
+                    <button onClick={() => { setResumeModelPath(null); setResumeModelType(null); }} className={isCrossTypeResume ? 'text-amber-400 hover:text-amber-300' : 'text-blue-400 hover:text-blue-300'}>
+                      <X size={12}/>
+                    </button>
                  </div>
                )}
             </div>

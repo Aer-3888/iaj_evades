@@ -5,13 +5,44 @@ use serde::Deserialize;
 
 use crate::{
     game::{Action, GameState},
-    sensing::{ObservationBuilder, INPUT_SIZE},
+    sensing::{DualRayObservationBuilder, ObservationBuilder, DQN2_INPUT_SIZE, INPUT_SIZE},
 };
+
+/// Which input/observation schema the model expects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ModelKind {
+    Dqn,
+    Dqn2,
+}
+
+/// Holds the correct observation builder for the loaded model kind.
+#[derive(Clone, Debug)]
+enum ObsState {
+    Dqn(ObservationBuilder),
+    Dqn2(DualRayObservationBuilder),
+}
+
+impl ObsState {
+    fn reset(&mut self, state: &GameState) {
+        match self {
+            ObsState::Dqn(b) => b.reset(state),
+            ObsState::Dqn2(b) => b.reset(state),
+        }
+    }
+
+    fn build_vec(&mut self, state: &GameState) -> Vec<f32> {
+        match self {
+            ObsState::Dqn(b) => b.build(state).to_vec(),
+            ObsState::Dqn2(b) => b.build(state).to_vec(),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct ModelController {
     network: CompiledDqnNetwork,
-    observation: ObservationBuilder,
+    obs: ObsState,
+    pub kind: ModelKind,
 }
 
 impl ModelController {
@@ -20,19 +51,20 @@ impl ModelController {
         let json = fs::read_to_string(path)
             .with_context(|| format!("failed to read model {}", path.display()))?;
         let network = CompiledDqnNetwork::load(&json)?;
-
-        Ok(Self {
-            network,
-            observation: ObservationBuilder::default(),
-        })
+        let kind = network.kind;
+        let obs = match kind {
+            ModelKind::Dqn => ObsState::Dqn(ObservationBuilder::default()),
+            ModelKind::Dqn2 => ObsState::Dqn2(DualRayObservationBuilder::default()),
+        };
+        Ok(Self { network, obs, kind })
     }
 
     pub fn reset(&mut self, state: &GameState) {
-        self.observation.reset(state);
+        self.obs.reset(state);
     }
 
     pub fn choose_action(&mut self, state: &GameState) -> Action {
-        let inputs = self.observation.build(state);
+        let inputs = self.obs.build_vec(state);
         let outputs = self.network.activate(&inputs);
         let index = outputs
             .iter()
@@ -63,20 +95,26 @@ struct DqnSavedModel {
 #[derive(Clone, Debug)]
 struct CompiledDqnNetwork {
     layers: Vec<DqnLayer>,
+    kind: ModelKind,
 }
 
 impl CompiledDqnNetwork {
     fn load(json: &str) -> Result<Self> {
         let saved: DqnSavedModel =
             serde_json::from_str(json).context("failed to decode DQN model")?;
-        if saved.model_type != "dqn" {
-            anyhow::bail!("unsupported model type {}", saved.model_type);
-        }
-        if saved.input_size != INPUT_SIZE {
+
+        let (kind, expected_input) = match saved.model_type.as_str() {
+            "dqn" => (ModelKind::Dqn, INPUT_SIZE),
+            "dqn2" => (ModelKind::Dqn2, DQN2_INPUT_SIZE),
+            other => anyhow::bail!("unsupported model type {}", other),
+        };
+
+        if saved.input_size != expected_input {
             anyhow::bail!(
-                "model input size {} does not match expected {}",
+                "model input size {} does not match expected {} for type {}",
                 saved.input_size,
-                INPUT_SIZE
+                expected_input,
+                saved.model_type
             );
         }
         if saved.output_size != Action::ALL.len() {
@@ -88,6 +126,7 @@ impl CompiledDqnNetwork {
         }
         Ok(Self {
             layers: saved.layers,
+            kind,
         })
     }
 
@@ -124,5 +163,13 @@ mod tests {
         let mut builder = ObservationBuilder::default();
         let observation = builder.build(&state);
         assert_eq!(observation.len(), INPUT_SIZE);
+    }
+
+    #[test]
+    fn dual_observation_shape_matches_dqn2_input_size() {
+        let state = GameState::new(GameConfig::default(), Some(2));
+        let mut builder = DualRayObservationBuilder::default();
+        let observation = builder.build(&state);
+        assert_eq!(observation.len(), DQN2_INPUT_SIZE);
     }
 }

@@ -14,9 +14,10 @@ use ax_ws::{
 };
 use axum as ax_ws; // Fixed conflict with internal naming
 use futures_util::{sink::SinkExt, stream::StreamExt};
-use rust_evades::{config::GameConfig, game::{Action, GameState}, sensing::ObservationBuilder};
+use rust_evades::{config::GameConfig, game::{Action, GameState}, sensing::{ObservationBuilder, DualRayObservationBuilder}};
 use rust_evades_dqn::{trainer::TrainingProgress, network::Network};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicU8;
 use tokio::sync::broadcast;
 use tower_http::{cors::Any, cors::CorsLayer, services::ServeDir};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -35,7 +36,10 @@ struct AppState {
     running: AtomicBool,
     ai_mode: AtomicBool,
     model: RwLock<Option<Network>>,
+    /// 0 = dqn, 1 = dqn2
+    model_kind: AtomicU8,
     obs_builder: RwLock<ObservationBuilder>,
+    obs_builder_dual: RwLock<DualRayObservationBuilder>,
     tx_broadcast: broadcast::Sender<String>,
     training_manager: TrainingManager,
     evaluation_manager: EvaluationManager,
@@ -98,7 +102,9 @@ async fn main() {
         running: AtomicBool::new(false),
         ai_mode: AtomicBool::new(false),
         model: RwLock::new(model),
+        model_kind: AtomicU8::new(0),
         obs_builder: RwLock::new(ObservationBuilder::default()),
+        obs_builder_dual: RwLock::new(DualRayObservationBuilder::default()),
         tx_broadcast: tx_broadcast.clone(),
         training_manager,
         evaluation_manager,
@@ -141,12 +147,20 @@ async fn main() {
             if is_running {
                 let action = {
                     if ai_mode {
-                        let mut obs_builder = state_clone.obs_builder.write().unwrap();
+                        let model_kind = state_clone.model_kind.load(Ordering::SeqCst);
                         let model = state_clone.model.read().unwrap();
                         let gs = state_clone.game_state.read().unwrap();
-                        
+
                         if let Some(net) = &*model {
-                            let obs = obs_builder.build(&gs);
+                            let obs = if model_kind == 1 {
+                                // dqn2: use dual-pass observation builder
+                                let mut obs_builder = state_clone.obs_builder_dual.write().unwrap();
+                                obs_builder.build(&gs).to_vec()
+                            } else {
+                                // dqn: use single-pass observation builder
+                                let mut obs_builder = state_clone.obs_builder.write().unwrap();
+                                obs_builder.build(&gs).to_vec()
+                            };
                             let q_values = net.predict(&obs);
                             let best_action_idx = q_values
                                 .iter()
@@ -185,6 +199,7 @@ async fn main() {
                     let _ = state_clone.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
 
                     state_clone.obs_builder.write().unwrap().reset(&gs);
+                    state_clone.obs_builder_dual.write().unwrap().reset(&gs);
                 }
             }
 
@@ -236,6 +251,18 @@ async fn main() {
 struct ModelInfo {
     name: String,
     path: String,
+    model_type: String,
+}
+
+fn read_model_type(path: &str) -> String {
+    if let Ok(content) = std::fs::read_to_string(path) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(s) = v.get("model_type").and_then(|s| s.as_str()) {
+                return s.to_string();
+            }
+        }
+    }
+    "dqn".to_string()
 }
 
 async fn list_models() -> impl IntoResponse {
@@ -267,11 +294,13 @@ async fn list_models() -> impl IntoResponse {
 
                         seen_paths.insert(path.clone());
 
+                        let model_type = read_model_type(&path);
+
                         if file_name.starts_with("checkpoint_ep_") {
-                            checkpoints.push((file_name, path, label));
+                            checkpoints.push((file_name, path, label, model_type));
                         } else {
                             let name = format!("{} [{}]", file_name, label);
-                            other_models.push(ModelInfo { name, path });
+                            other_models.push(ModelInfo { name, path, model_type });
                         }
                     }
                 }
@@ -281,10 +310,11 @@ async fn list_models() -> impl IntoResponse {
 
     // Identify the latest checkpoint
     checkpoints.sort_by(|a, b| b.0.cmp(&a.0));
-    if let Some((name, path, label)) = checkpoints.first() {
+    if let Some((name, path, label, model_type)) = checkpoints.first() {
         models.push(ModelInfo {
             name: format!("{} (Latest) [{}]", name, label),
             path: path.clone(),
+            model_type: model_type.clone(),
         });
     }
 
@@ -320,8 +350,14 @@ async fn load_model(
     if let Ok(content) = std::fs::read_to_string(path) {
         use rust_evades_dqn::model::SavedModel;
         if let Ok(saved_model) = serde_json::from_str::<SavedModel>(&content) {
+            let kind_byte = if saved_model.model_type == "dqn2" { 1u8 } else { 0u8 };
             let mut model = state.model.write().unwrap();
             *model = Some(Network::from_layers(saved_model.layers));
+            state.model_kind.store(kind_byte, Ordering::SeqCst);
+            // reset both builders so stale history doesn't contaminate
+            let gs = state.game_state.read().unwrap();
+            state.obs_builder.write().unwrap().reset(&gs);
+            state.obs_builder_dual.write().unwrap().reset(&gs);
             return "Model reloaded successfully".into_response();
         }
     }
@@ -341,8 +377,13 @@ async fn promote_model(
             if let Ok(content) = std::fs::read_to_string(target) {
                 use rust_evades_dqn::model::SavedModel;
                 if let Ok(saved_model) = serde_json::from_str::<SavedModel>(&content) {
+                    let kind_byte = if saved_model.model_type == "dqn2" { 1u8 } else { 0u8 };
                     let mut model = state.model.write().unwrap();
                     *model = Some(Network::from_layers(saved_model.layers));
+                    state.model_kind.store(kind_byte, Ordering::SeqCst);
+                    let gs = state.game_state.read().unwrap();
+                    state.obs_builder.write().unwrap().reset(&gs);
+                    state.obs_builder_dual.write().unwrap().reset(&gs);
                     return "Model promoted and reloaded";
                 }
             }
@@ -408,6 +449,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                 let _ = state_clone.tx_broadcast.send(serde_json::to_string(&msg).unwrap());
 
                                 state_clone.obs_builder.write().unwrap().reset(&gs);
+                                state_clone.obs_builder_dual.write().unwrap().reset(&gs);
                             }
                             WebControl::ToggleAI => {
                                 let current = state_clone.ai_mode.load(Ordering::SeqCst);
@@ -462,6 +504,7 @@ async fn update_config(
     gs.reset(seed);
 
     state.obs_builder.write().unwrap().reset(&gs);
+    state.obs_builder_dual.write().unwrap().reset(&gs);
 
     let log = LogLine {
         stream: "system".to_string(),

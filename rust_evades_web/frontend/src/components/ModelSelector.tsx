@@ -5,6 +5,20 @@ import { useToast } from '../contexts/ToastContext'
 interface ModelInfo {
   name: string;
   path: string;
+  model_type: string;
+}
+
+function ModelTypeBadge({ type }: { type: string }) {
+  const isDqn2 = type === 'dqn2';
+  return (
+    <span className={`ml-2 shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+      isDqn2
+        ? 'bg-purple-900/50 text-purple-300 border border-purple-700/50'
+        : 'bg-emerald-900/40 text-emerald-400 border border-emerald-700/40'
+    }`}>
+      {isDqn2 ? 'DQN2' : 'DQN'}
+    </span>
+  );
 }
 
 export default function ModelSelector() {
@@ -86,6 +100,7 @@ export default function ModelSelector() {
                     <span className={`text-sm truncate ${activePath === model.path ? 'text-blue-300 font-medium' : 'text-slate-300'}`}>
                       {model.name}
                     </span>
+                    <ModelTypeBadge type={model.model_type} />
                   </div>
                   {activePath === model.path ? (
                     <div className="bg-blue-500/20 text-blue-400 p-1 rounded">
