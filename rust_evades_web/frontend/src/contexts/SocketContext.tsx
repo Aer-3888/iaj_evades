@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-type MessageType = 'Game' | 'Training' | 'Log' | 'Status';
+type MessageType = 'Game' | 'Training' | 'Evaluation' | 'Log' | 'Status';
 
 interface SocketMessage {
   type: MessageType;
@@ -27,6 +27,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const subscribersRef = useRef<Record<string, Set<(data: any) => void>>>({
     Game: new Set(),
     Training: new Set(),
+    Evaluation: new Set(),
     Log: new Set(),
     Status: new Set(),
   });
