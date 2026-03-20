@@ -152,7 +152,7 @@ function AppContent() {
         <div className="flex-1 overflow-y-auto p-6 relative z-10">
           {activeTab === 'game' && (
             <div className="flex flex-col space-y-6">
-              <div className="bg-slate-900 rounded-xl border border-slate-800 p-2 shadow-2xl overflow-hidden self-center shrink-0">
+              <div className="self-center shrink-0">
                 <Visualizer isRunning={status.running} isAiMode={status.ai_mode} />
               </div>
               <div className="grid grid-cols-3 gap-6 pb-12">

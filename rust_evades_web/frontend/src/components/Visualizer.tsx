@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { Maximize, Minimize } from 'lucide-react';
 
 interface GameState {
   player: {
@@ -50,13 +51,20 @@ interface Props {
 
 export default function Visualizer({ isRunning, isAiMode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { sendMessage, subscribe } = useSocket();
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastStateRef = useRef<GameState | null>(null);
   const requestRef = useRef<number>();
 
   const pressedKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
     const unsubscribe = subscribe('Game', (data) => {
       lastStateRef.current = data;
     });
@@ -116,9 +124,21 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
       unsubscribe();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [sendMessage, subscribe]);
+  }, [sendMessage, subscribe, isAiMode, isRunning]);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -339,16 +359,31 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
   };
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="bg-black shadow-inner block mx-auto"
-      style={{ 
-        maxWidth: '100%', 
-        height: 'auto', 
-        maxHeight: 'calc(100vh - 250px)',
-        aspectRatio: lastStateRef.current ? `${lastStateRef.current.config.screen_width} / ${lastStateRef.current.config.screen_height}` : '2/1'
-      }}
-    />
+    <div 
+      ref={containerRef} 
+      className={`relative group flex items-center justify-center bg-black overflow-hidden ${isFullscreen ? 'w-screen h-screen' : 'rounded-xl shadow-2xl border border-slate-800'}`}
+    >
+      <canvas 
+        ref={canvasRef} 
+        className="block"
+        style={{ 
+          width: isFullscreen ? '100%' : 'auto',
+          height: isFullscreen ? '100%' : 'auto',
+          maxWidth: '100%', 
+          maxHeight: isFullscreen ? '100%' : 'calc(100vh - 250px)',
+          objectFit: 'contain',
+          aspectRatio: lastStateRef.current ? `${lastStateRef.current.config.screen_width} / ${lastStateRef.current.config.screen_height}` : '2/1'
+        }}
+      />
+      
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-4 right-4 p-2 bg-slate-900/50 hover:bg-slate-900 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm border border-slate-700/50"
+        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+      >
+        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+      </button>
+    </div>
   );
 }
 
