@@ -473,13 +473,38 @@ async fn update_config(
     "ok"
 }
 
+#[derive(Deserialize)]
+struct StartTrainingRequest {
+    config: rust_evades_dqn::trainer::TrainingConfig,
+    resume_model_path: Option<String>,
+}
+
 async fn start_training(
     State(state): State<Arc<AppState>>,
-    Json(config): Json<rust_evades_dqn::trainer::TrainingConfig>,
+    Json(req): Json<StartTrainingRequest>,
 ) -> impl IntoResponse {
+    let mut resume_model = None;
+    if let Some(path_str) = &req.resume_model_path {
+        let path = std::path::Path::new(path_str);
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(path) {
+                use rust_evades_dqn::model::SavedModel;
+                if let Ok(model) = serde_json::from_str::<SavedModel>(&content) {
+                    resume_model = Some(model);
+                } else {
+                    return (ax_ws::http::StatusCode::BAD_REQUEST, "Failed to parse resume model").into_response();
+                }
+            } else {
+                return (ax_ws::http::StatusCode::INTERNAL_SERVER_ERROR, "Failed to read resume model").into_response();
+            }
+        } else {
+            return (ax_ws::http::StatusCode::NOT_FOUND, "Resume model file not found").into_response();
+        }
+    }
+
     let output_dir = std::path::PathBuf::from("training_runs/web_run");
-    state.training_manager.start(config, output_dir);
-    "started"
+    state.training_manager.start(req.config, output_dir, resume_model);
+    "started".into_response()
 }
 
 async fn stop_training(
