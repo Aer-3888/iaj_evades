@@ -20,3 +20,5 @@
 - [x] Seed history log
 - [ ] Seed finder tab pour trouver les seeds stylés
 - [ ] Rolling average of performance by steps
+- [ ] Remove blue (2nd raycast pass) visualization if model type is DQN
+- [ ] Flash light mode should adapt to the model type: have bigger radius if type is DQN2
