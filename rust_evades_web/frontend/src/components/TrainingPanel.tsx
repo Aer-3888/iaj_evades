@@ -180,6 +180,72 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
   const configModelTypeLower = config.model_type.toLowerCase();
 
+  const maxEpisode = latest.episode > 0 ? latest.episode : 1;
+
+  const ROLLING_WINDOW = 1000;
+
+  const computeRolling = (field: keyof typeof history[0]): number[] => {
+    const result: number[] = [];
+    let windowStart = 0;
+    let sum = 0;
+    for (let i = 0; i < history.length; i++) {
+      sum += history[i][field] as number;
+      while (history[i].episode - history[windowStart].episode > ROLLING_WINDOW) {
+        sum -= history[windowStart][field] as number;
+        windowStart++;
+      }
+      result.push(sum / (i - windowStart + 1));
+    }
+    return result;
+  };
+
+  const rollingSurvival = computeRolling('avg_survival');
+  const rollingReturn = computeRolling('avg_return');
+  const rollingLoss = computeRolling('loss');
+  const rollingTimeouts = computeRolling('timeouts');
+
+  const computedHistory = history.map((d, i) => ({
+    ...d,
+    lossLog: Math.log10(Math.max(1e-10, d.loss)),
+    rolling_avg_survival: rollingSurvival[i],
+    rolling_avg_return: rollingReturn[i],
+    rolling_loss_log: Math.log10(Math.max(1e-10, rollingLoss[i])),
+    rolling_timeouts: rollingTimeouts[i],
+  }));
+
+  const xAxisProps = {
+    dataKey: 'episode' as const,
+    type: 'number' as const,
+    domain: [0, maxEpisode] as [number, number],
+    tickFormatter: (val: number) => {
+      if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+      if (val >= 1000) return `${(val / 1000).toFixed(0)}K`;
+      return String(val);
+    },
+    stroke: '#64748b' as const,
+    fontSize: 12,
+  };
+
+  const tooltipLabelFormatter = (val: number) => `Episode: ${val.toLocaleString()}`;
+
+  const lossValues = history.map(d => d.loss).filter(l => l > 0);
+  const logMinLoss = lossValues.length > 0 ? Math.floor(Math.log10(Math.min(...lossValues))) : -4;
+  const logMaxLoss = lossValues.length > 0 ? Math.ceil(Math.log10(Math.max(...lossValues))) : 0;
+  const lossTicks: number[] = [];
+  for (let i = logMinLoss; i <= logMaxLoss; i++) {
+    lossTicks.push(i);
+  }
+  const lossYAxisProps = {
+    ticks: lossTicks,
+    domain: [logMinLoss, logMaxLoss] as [number, number],
+    tickFormatter: (val: number) => {
+      const v = Math.pow(10, val);
+      return v >= 0.01 ? v.toPrecision(2) : v.toExponential(0);
+    },
+    stroke: '#64748b' as const,
+    fontSize: 11,
+  };
+
   return (
     <div className="space-y-6">
       {/* Cross-type resume warning dialog */}
@@ -482,16 +548,18 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
             <ChartIcon size={16} className="mr-2" /> Survival Time (Avg)
           </h3>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={history}>
+            <LineChart data={computedHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="episode" stroke="#64748b" fontSize={12} />
+              <XAxis {...xAxisProps} />
               <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
                 itemStyle={{ color: '#10b981' }}
+                labelFormatter={tooltipLabelFormatter}
               />
               <Line type="monotone" dataKey="avg_survival" stroke="#10b981" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="min_survival" stroke="#334155" strokeWidth={1} dot={false} strokeDasharray="5 5" />
+              <Line type="monotone" dataKey="rolling_avg_survival" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Avg" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -501,15 +569,18 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
             <ChartIcon size={16} className="mr-2" /> Training Loss
           </h3>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={history}>
+            <LineChart data={computedHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="episode" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
+              <XAxis {...xAxisProps} />
+              <YAxis {...lossYAxisProps} />
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
                 itemStyle={{ color: '#f43f5e' }}
+                labelFormatter={tooltipLabelFormatter}
+                formatter={(val: number) => [Math.pow(10, val as number).toExponential(3), 'Loss']}
               />
-              <Line type="monotone" dataKey="loss" stroke="#f43f5e" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="lossLog" name="Loss" stroke="#f43f5e" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="rolling_loss_log" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Avg" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -519,15 +590,17 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
             <ChartIcon size={16} className="mr-2" /> Average Return
           </h3>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={history}>
+            <LineChart data={computedHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="episode" stroke="#64748b" fontSize={12} />
+              <XAxis {...xAxisProps} />
               <YAxis stroke="#64748b" fontSize={12} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
                 itemStyle={{ color: '#3b82f6' }}
+                labelFormatter={tooltipLabelFormatter}
               />
               <Line type="monotone" dataKey="avg_return" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="rolling_avg_return" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Avg" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -537,16 +610,18 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
             <Target size={16} className="mr-2" /> Performance (Success & Survival)
           </h3>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={history}>
+            <LineChart data={computedHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="episode" stroke="#64748b" fontSize={12} />
+              <XAxis {...xAxisProps} />
               <YAxis yAxisId="left" stroke="#f43f5e" fontSize={12} orientation="left" label={{ value: 'Wins', angle: -90, position: 'insideLeft', fill: '#f43f5e', fontSize: 10 }} />
               <YAxis yAxisId="right" stroke="#3b82f6" fontSize={12} orientation="right" label={{ value: 'Survival (s)', angle: 90, position: 'insideRight', fill: '#3b82f6', fontSize: 10 }} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
+                labelFormatter={tooltipLabelFormatter}
               />
               <Line yAxisId="left" type="monotone" dataKey="timeouts" name="Wins" stroke="#f43f5e" strokeWidth={2} dot={true} r={2} />
               <Line yAxisId="right" type="monotone" dataKey="avg_survival" name="Avg Survival" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="rolling_timeouts" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Wins" />
             </LineChart>
           </ResponsiveContainer>
         </div>

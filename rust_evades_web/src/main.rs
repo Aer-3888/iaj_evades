@@ -42,6 +42,7 @@ struct AppState {
     obs_builder_dual: RwLock<DualRayObservationBuilder>,
     tx_broadcast: broadcast::Sender<String>,
     training_manager: TrainingManager,
+    training_history: Arc<RwLock<Vec<TrainingProgress>>>,
     evaluation_manager: EvaluationManager,
     cmd_runner: CmdRunner,
 }
@@ -81,6 +82,7 @@ async fn main() {
     // many messages rapidly and the WebSocket consumer falls slightly behind.
     let (tx_broadcast, _) = broadcast::channel(512);
     let (training_manager, mut training_rx) = TrainingManager::new();
+    let training_history: Arc<RwLock<Vec<TrainingProgress>>> = Arc::new(RwLock::new(Vec::new()));
     let (evaluation_manager, mut evaluation_rx) = EvaluationManager::new();
     let (cmd_runner, mut log_rx) = CmdRunner::new();
 
@@ -115,16 +117,19 @@ async fn main() {
         obs_builder_dual: RwLock::new(DualRayObservationBuilder::default()),
         tx_broadcast: tx_broadcast.clone(),
         training_manager,
+        training_history: training_history.clone(),
         evaluation_manager,
         cmd_runner,
     });
 
     // Bridge training, evaluation and logs to main broadcast
     let tx_bridge = tx_broadcast.clone();
+    let training_history_bridge = training_history.clone();
     tokio::spawn(async move {
         loop {
             tokio::select! {
                 Ok(progress) = training_rx.recv() => {
+                    training_history_bridge.write().unwrap().push(progress.clone());
                     let msg = HubMessage::Training(progress);
                     let _ = tx_bridge.send(serde_json::to_string(&msg).unwrap());
                 }
@@ -246,6 +251,7 @@ async fn main() {
         .route("/api/train/start", post(start_training))
         .route("/api/train/stop", post(stop_training))
         .route("/api/train/status", get(get_training_status))
+        .route("/api/train/history", get(get_training_history))
         .route("/api/train/promote", post(promote_model))
         .route("/api/eval/start", post(start_evaluation))
         .route("/api/eval/stop", post(stop_evaluation))
@@ -551,10 +557,17 @@ struct StartTrainingRequest {
     resume_model_path: Option<String>,
 }
 
+async fn get_training_history(
+    State(state): State<Arc<AppState>>,
+) -> Json<Vec<TrainingProgress>> {
+    Json(state.training_history.read().unwrap().clone())
+}
+
 async fn start_training(
     State(state): State<Arc<AppState>>,
     Json(req): Json<StartTrainingRequest>,
 ) -> impl IntoResponse {
+    state.training_history.write().unwrap().clear();
     let mut resume_model = None;
     if let Some(path_str) = &req.resume_model_path {
         let path = std::path::Path::new(path_str);
