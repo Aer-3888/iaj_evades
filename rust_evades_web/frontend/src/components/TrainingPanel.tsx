@@ -1,4 +1,5 @@
-import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy } from 'lucide-react'
+import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy, Settings2 } from 'lucide-react'
+import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import StatCard from './StatCard';
 import { TrainingProgress } from '../App';
@@ -10,8 +11,53 @@ interface Props {
   setIsRunning: (val: boolean) => void;
 }
 
+interface TrainingConfig {
+  episodes: number;
+  trainer_seed: number;
+  learning_rate: number;
+  epsilon_decay_steps: number;
+  batch_size: number;
+  replay_capacity: number;
+  checkpoint_every: number;
+  seed_focus_mode: "Original" | "BadSeeds";
+  fixed_training_seeds: number[];
+  random_seed_count_per_cycle: number;
+  hidden_sizes: number[];
+  warmup_steps: number;
+  train_every: number;
+  target_sync_interval: number;
+  gamma: number;
+  epsilon_start: number;
+  epsilon_end: number;
+  action_repeat: number;
+}
+
+const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
+  episodes: 100000,
+  trainer_seed: 7,
+  learning_rate: 0.0003,
+  epsilon_decay_steps: 50000,
+  batch_size: 128,
+  replay_capacity: 50000,
+  checkpoint_every: 100,
+  seed_focus_mode: "BadSeeds",
+  fixed_training_seeds: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+  random_seed_count_per_cycle: 2,
+  hidden_sizes: [128, 128],
+  warmup_steps: 1000,
+  train_every: 2,
+  target_sync_interval: 1000,
+  gamma: 0.99,
+  epsilon_start: 1.0,
+  epsilon_end: 0.03,
+  action_repeat: 2,
+};
+
 export default function TrainingPanel({ history, isRunning, setIsRunning }: Props) {
   const { showToast } = useToast();
+  const [showSettings, setShowSettings] = useState(false);
+  const [config, setConfig] = useState<TrainingConfig>(DEFAULT_TRAINING_CONFIG);
+
   const latest = history[history.length - 1] || {
     episode: 0,
     total_steps: 0,
@@ -28,7 +74,11 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
   const handleStart = async () => {
     try {
-      await fetch('/api/train/start', { method: 'POST' });
+      await fetch('/api/train/start', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
       setIsRunning(true);
       showToast('Training session started', 'success');
     } catch (e) {
@@ -57,43 +107,134 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-xl font-bold text-emerald-400">DQN Training Control</h2>
-          <p className="text-sm text-slate-400 mt-1">Configure and monitor reinforcement learning sessions.</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          {!isRunning && history.length > 0 && (
-            <button 
-              onClick={handlePromote}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition"
-              title="Promote this model to be used in the Simulation tab"
-            >
-              Promote to Simulation
-            </button>
-          )}
-          <div className="flex items-center px-4 py-2 bg-slate-950 rounded-lg border border-slate-800">
-            <div className={`w-2 h-2 rounded-full mr-3 ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
-            <span className="text-xs font-mono uppercase tracking-widest">
-              {isRunning ? 'Training Active' : 'Idle'}
-            </span>
+      <div className="flex flex-col bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="flex items-center justify-between p-6">
+          <div>
+            <h2 className="text-xl font-bold text-emerald-400">DQN Training Control</h2>
+            <p className="text-sm text-slate-400 mt-1">Configure and monitor reinforcement learning sessions.</p>
           </div>
-          {!isRunning ? (
-            <button 
-              onClick={handleStart}
-              className="flex items-center px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold transition shadow-lg shadow-emerald-900/20 cursor-pointer"
-            >
-              <Play size={18} className="mr-2 fill-current" /> Start Session
-            </button>
-          ) : (
-            <button 
-              onClick={handleStop}
-              className="flex items-center px-6 py-2 bg-rose-600 hover:bg-rose-500 rounded-lg font-bold transition cursor-pointer"
-            >
-              <Square size={18} className="mr-2 fill-current" /> Stop
-            </button>
-          )}
+          <div className="flex items-center space-x-4">
+            {!isRunning && (
+              <button 
+                onClick={() => setShowSettings(!showSettings)}
+                className={`p-2 rounded-lg transition ${showSettings ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                title="Toggle Training Settings"
+              >
+                <Settings2 size={20} />
+              </button>
+            )}
+            {!isRunning && history.length > 0 && (
+              <button 
+                onClick={handlePromote}
+                className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition"
+                title="Promote this model to be used in the Simulation tab"
+              >
+                Promote to Simulation
+              </button>
+            )}
+            <div className="flex items-center px-4 py-2 bg-slate-950 rounded-lg border border-slate-800">
+              <div className={`w-2 h-2 rounded-full mr-3 ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
+              <span className="text-xs font-mono uppercase tracking-widest">
+                {isRunning ? 'Training Active' : 'Idle'}
+              </span>
+            </div>
+            {!isRunning ? (
+              <button 
+                onClick={handleStart}
+                className="flex items-center px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold transition shadow-lg shadow-emerald-900/20 cursor-pointer"
+              >
+                <Play size={18} className="mr-2 fill-current" /> Start Session
+              </button>
+            ) : (
+              <button 
+                onClick={handleStop}
+                className="flex items-center px-6 py-2 bg-rose-600 hover:bg-rose-500 rounded-lg font-bold transition cursor-pointer"
+              >
+                <Square size={18} className="mr-2 fill-current" /> Stop
+              </button>
+            )}
+          </div>
         </div>
+
+        {showSettings && !isRunning && (
+          <div className="border-t border-slate-800 p-6 bg-slate-950/50 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+            <div className="space-y-4">
+               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Core Parameters</h3>
+               <div className="space-y-3">
+                 <SettingInput 
+                    label="Total Episodes" 
+                    value={config.episodes} 
+                    onChange={v => setConfig({...config, episodes: v})} 
+                    min={100} max={1000000} step={1000}
+                  />
+                 <SettingInput 
+                    label="Learning Rate" 
+                    value={config.learning_rate} 
+                    onChange={v => setConfig({...config, learning_rate: v})} 
+                    min={0.00001} max={0.01} step={0.00001}
+                    isFloat
+                  />
+                 <SettingInput 
+                    label="Trainer Seed" 
+                    value={config.trainer_seed} 
+                    onChange={v => setConfig({...config, trainer_seed: v})} 
+                    min={1} max={99999}
+                  />
+               </div>
+            </div>
+            <div className="space-y-4">
+               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">DQN Logic</h3>
+               <div className="space-y-3">
+                 <SettingInput 
+                    label="Epsilon Decay (steps)" 
+                    value={config.epsilon_decay_steps} 
+                    onChange={v => setConfig({...config, epsilon_decay_steps: v})} 
+                    min={1000} max={500000} step={1000}
+                  />
+                 <SettingInput 
+                    label="Batch Size" 
+                    value={config.batch_size} 
+                    onChange={v => setConfig({...config, batch_size: v})} 
+                    min={32} max={1024} step={32}
+                  />
+                 <SettingInput 
+                    label="Replay Capacity" 
+                    value={config.replay_capacity} 
+                    onChange={v => setConfig({...config, replay_capacity: v})} 
+                    min={1000} max={500000} step={1000}
+                  />
+               </div>
+            </div>
+            <div className="space-y-4">
+               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Advanced</h3>
+               <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500">Seed Focus Mode</label>
+                    <select 
+                      value={config.seed_focus_mode}
+                      onChange={e => setConfig({...config, seed_focus_mode: e.target.value as any})}
+                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-sm text-slate-300 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Original">Original (All seeds)</option>
+                      <option value="BadSeeds">Bad Seeds (Focus on failures)</option>
+                    </select>
+                  </div>
+                 <SettingInput 
+                    label="Action Repeat" 
+                    value={config.action_repeat} 
+                    onChange={v => setConfig({...config, action_repeat: v})} 
+                    min={1} max={4}
+                  />
+                 <SettingInput 
+                    label="Target Sync (steps)" 
+                    value={config.target_sync_interval} 
+                    onChange={v => setConfig({...config, target_sync_interval: v})} 
+                    min={100} max={10000} step={100}
+                  />
+               </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -208,6 +349,24 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
           </ResponsiveContainer>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SettingInput({ label, value, onChange, min, max, step, isFloat }: { label: string, value: number, onChange: (v: number) => void, min: number, max: number, step?: number, isFloat?: boolean }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between">
+        <label className="text-xs font-medium text-slate-500">{label}</label>
+        <span className="text-xs font-mono text-emerald-500">{isFloat ? value.toFixed(5) : value}</span>
+      </div>
+      <input 
+        type="range" 
+        min={min} max={max} step={step || 1}
+        value={value}
+        onChange={e => onChange(isFloat ? parseFloat(e.target.value) : parseInt(e.target.value))}
+        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+      />
     </div>
   )
 }

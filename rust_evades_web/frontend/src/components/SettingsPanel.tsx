@@ -12,6 +12,7 @@ interface GameConfig {
   max_episode_time: number;
   enemy_spawn_interval_min: number;
   enemy_spawn_interval_max: number;
+  default_seed: number;
 }
 
 export default function SettingsPanel() {
@@ -106,6 +107,27 @@ export default function SettingsPanel() {
                 onChange={(v: number) => setConfig({...config, max_episode_time: v})}
                 min={5} max={120} step={5}
               />
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <label className="text-sm font-medium text-slate-400">Simulation Seed</label>
+                  <span className="text-xs font-mono text-slate-500 italic">0 = Random</span>
+                </div>
+                <div className="flex space-x-2">
+                   <input 
+                      type="number"
+                      value={config.default_seed}
+                      onChange={(e) => setConfig({...config, default_seed: parseInt(e.target.value) || 0})}
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-blue-400 w-full focus:outline-none focus:border-blue-500 transition"
+                      placeholder="Enter seed (0 for random)"
+                    />
+                    <button 
+                      onClick={() => setConfig({...config, default_seed: 0})}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${config.default_seed === 0 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}
+                    >
+                      Random
+                    </button>
+                </div>
+              </div>
             </div>
           </section>
 

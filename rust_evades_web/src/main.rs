@@ -156,10 +156,14 @@ async fn main() {
                 gs.step_fixed(action);
                 
                 if gs.done {
-                    use rand::RngExt;
-                    let mut rng = rand::rng();
-                    let new_seed = rng.random::<u64>();
-                    gs.reset(Some(new_seed));
+                    let seed = if gs.config.default_seed != 0 {
+                        Some(gs.config.default_seed)
+                    } else {
+                        use rand::RngExt;
+                        let mut rng = rand::rng();
+                        Some(rng.random::<u64>())
+                    };
+                    gs.reset(seed);
                     state_clone.obs_builder.write().unwrap().reset(&gs);
                 }
             }
@@ -364,10 +368,14 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             }
                             WebControl::Reset => {
                                 let mut gs = state_clone.game_state.write().unwrap();
-                                use rand::RngExt;
-                                let mut rng = rand::rng();
-                                let new_seed = rng.random::<u64>();
-                                gs.reset(Some(new_seed));
+                                let seed = if gs.config.default_seed != 0 {
+                                    Some(gs.config.default_seed)
+                                } else {
+                                    use rand::RngExt;
+                                    let mut rng = rand::rng();
+                                    Some(rng.random::<u64>())
+                                };
+                                gs.reset(seed);
                                 state_clone.obs_builder.write().unwrap().reset(&gs);
                             }
                             WebControl::ToggleAI => {
@@ -417,9 +425,8 @@ async fn update_config(
 
 async fn start_training(
     State(state): State<Arc<AppState>>,
+    Json(config): Json<rust_evades_dqn::trainer::TrainingConfig>,
 ) -> impl IntoResponse {
-    use rust_evades_dqn::trainer::TrainingConfig;
-    let config = TrainingConfig::default();
     let output_dir = std::path::PathBuf::from("training_runs/web_run");
     state.training_manager.start(config, output_dir);
     "started"
