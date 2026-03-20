@@ -6,6 +6,8 @@ import Console from './components/Console'
 import ModelSelector from './components/ModelSelector'
 import { Activity, Settings, Play, Pause, RotateCcw, Brain, User } from 'lucide-react'
 import { SocketProvider, useSocket } from './contexts/SocketContext'
+import { ToastProvider } from './contexts/ToastContext'
+import ToastContainer from './components/Toast'
 
 interface EngineStatus {
   running: boolean;
@@ -200,7 +202,10 @@ function AppContent() {
 export default function App() {
   return (
     <SocketProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+        <ToastContainer />
+      </ToastProvider>
     </SocketProvider>
   )
 }
