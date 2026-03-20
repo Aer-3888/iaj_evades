@@ -15,3 +15,4 @@
 - [ ] Pouvoir changer la vitesse de jeu
 - [ ] Side menu avec les settings pour plus vite
 - [ ] Flashlight mode
+- [ ] Fullscreen game mode
