@@ -1,5 +1,5 @@
-import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy, Settings2 } from 'lucide-react'
-import { useState } from 'react'
+import { Play, Square, LineChart as ChartIcon, Zap, Target, Activity, Trophy, Settings2, FileJson, RefreshCw, X, Check } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import StatCard from './StatCard';
 import { TrainingProgress } from '../App';
@@ -57,6 +57,26 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
   const { showToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<TrainingConfig>(DEFAULT_TRAINING_CONFIG);
+  const [resumeModelPath, setResumeModelPath] = useState<string | null>(null);
+  const [models, setModels] = useState<{name: string, path: string}[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  const fetchModels = async () => {
+    setLoadingModels(true);
+    try {
+      const res = await fetch('/api/models');
+      const data = await res.json();
+      setModels(data);
+    } catch (e) {
+      console.error('Failed to fetch models', e);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showSettings) fetchModels();
+  }, [showSettings]);
 
   const latest = history[history.length - 1] || {
     episode: 0,
@@ -74,13 +94,18 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
   const handleStart = async () => {
     try {
-      await fetch('/api/train/start', { 
+      const res = await fetch('/api/train/start', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify({ config, resume_model_path: resumeModelPath })
       });
-      setIsRunning(true);
-      showToast('Training session started', 'success');
+      if (res.ok) {
+        setIsRunning(true);
+        showToast('Training session started', 'success');
+      } else {
+        const err = await res.text();
+        showToast(`Failed to start: ${err}`, 'error');
+      }
     } catch (e) {
       showToast('Failed to start training session', 'error');
     }
@@ -232,6 +257,57 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                     min={100} max={10000} step={100}
                   />
                </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-6">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Resume from model (Optional)</h3>
+                  <button 
+                    onClick={fetchModels}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 transition"
+                    title="Refresh model list"
+                  >
+                    <RefreshCw size={14} className={loadingModels ? 'animate-spin' : ''} />
+                  </button>
+               </div>
+               
+               <div className="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
+                  <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                    {models.length === 0 ? (
+                      <div className="p-4 text-center text-slate-600 italic text-xs">
+                        No JSON models found.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-800/50">
+                        {models.map((model) => (
+                          <button
+                            key={model.path}
+                            onClick={() => setResumeModelPath(model.path === resumeModelPath ? null : model.path)}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-left transition hover:bg-slate-800/50 ${resumeModelPath === model.path ? 'bg-blue-900/20' : ''}`}
+                          >
+                            <div className="flex items-center min-w-0 mr-4">
+                              <FileJson size={14} className={`mr-2 shrink-0 ${resumeModelPath === model.path ? 'text-blue-400' : 'text-slate-500'}`} />
+                              <span className={`text-[11px] truncate ${resumeModelPath === model.path ? 'text-blue-300 font-medium' : 'text-slate-300'}`}>
+                                {model.name}
+                              </span>
+                            </div>
+                            {resumeModelPath === model.path && (
+                              <div className="text-blue-400">
+                                <Check size={12} />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+               </div>
+               {resumeModelPath && (
+                 <div className="mt-2 flex items-center justify-between bg-blue-950/20 border border-blue-900/30 rounded-md px-2 py-1">
+                    <span className="text-[10px] text-blue-400 font-mono truncate mr-2">SELECTED: {resumeModelPath.split('/').pop()}</span>
+                    <button onClick={() => setResumeModelPath(null)} className="text-blue-400 hover:text-blue-300"><X size={12}/></button>
+                 </div>
+               )}
             </div>
           </div>
         )}

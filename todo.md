@@ -11,10 +11,11 @@
 - [x] Visualiser le raycasting
 - [x] Vision Only Mode (Fog of War)
 - [x] Page d'évaluation de l'ia
-- [ ] Pouvoir resume un training avec un modèle
+- [x] Pouvoir resume un training avec un modèle
 - [x] Pouvoir écrire des valeurs au lieu des sliders
 - [x] Pouvoir changer la vitesse de jeu
 - [x] Side menu avec les settings pour plus vite
 - [x] Flashlight mode
-- [ ] Fullscreen game mode
+- [x] Fullscreen game mode
+- [x] Seed history log
 - [ ] Seed finder tab pour trouver les seeds stylés

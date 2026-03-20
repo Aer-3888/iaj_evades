@@ -6,16 +6,15 @@ use std::{
     },
 };
 
-use rust_evades_dqn::trainer::{train, TrainingConfig, TrainingProgress};
+use rust_evades_dqn::{trainer::{train, TrainingConfig, TrainingProgress}, model::SavedModel};
 use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 
 pub struct TrainingManager {
     is_running: Arc<AtomicBool>,
     stop_signal: Arc<AtomicBool>,
     progress_tx: broadcast::Sender<TrainingProgress>,
 }
-
-use tokio::sync::broadcast;
 
 impl TrainingManager {
     pub fn new() -> (Self, broadcast::Receiver<TrainingProgress>) {
@@ -30,7 +29,7 @@ impl TrainingManager {
         )
     }
 
-    pub fn start(&self, config: TrainingConfig, output_dir: PathBuf) {
+    pub fn start(&self, config: TrainingConfig, output_dir: PathBuf, resume_model: Option<SavedModel>) {
         if self.is_running.load(Ordering::SeqCst) {
             return;
         }
@@ -54,7 +53,7 @@ impl TrainingManager {
                 }
             });
 
-            let result = train(config, &output_dir, None, Some(tx), Some(stop_signal));
+            let result = train(config, &output_dir, resume_model, Some(tx), Some(stop_signal));
             is_running.store(false, Ordering::SeqCst);
             
             if let Err(e) = result {
