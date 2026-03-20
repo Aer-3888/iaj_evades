@@ -18,7 +18,9 @@ pub struct TrainingManager {
 
 impl TrainingManager {
     pub fn new() -> (Self, broadcast::Receiver<TrainingProgress>) {
-        let (tx, rx) = broadcast::channel(100);
+        // Capacity is deliberately small: training progress is now throttled to
+        // at most ~2 messages/s, so a small buffer is perfectly fine.
+        let (tx, rx) = broadcast::channel(32);
         (
             Self {
                 is_running: Arc::new(AtomicBool::new(false)),
