@@ -257,7 +257,10 @@ impl GameState {
     }
 
     pub fn reset(&mut self, seed: Option<u64>) {
-        let actual_seed = seed.unwrap_or(self.base_seed);
+        if let Some(s) = seed {
+            self.base_seed = s;
+        }
+        let actual_seed = self.base_seed;
         self.rng = ChaCha8Rng::seed_from_u64(actual_seed);
         self.current_level = 0;
         self.map = Vec::new();

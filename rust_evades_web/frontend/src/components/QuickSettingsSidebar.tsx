@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { RefreshCcw, Zap, Target, Settings2, Share2 } from 'lucide-react'
+import { RefreshCcw, Zap, Target, Settings2, Share2, Copy, RotateCcw as ReplayIcon, FileText } from 'lucide-react'
+import { useSocket } from '../contexts/SocketContext'
 import { useToast } from '../contexts/ToastContext'
 
 interface GameConfig {
@@ -20,7 +21,21 @@ interface GameConfig {
 export default function QuickSettingsSidebar() {
   const [config, setConfig] = useState<GameConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [seedHistory, setSeedHistory] = useState<number[]>([]);
   const { showToast } = useToast();
+  const { subscribe } = useSocket();
+
+  useEffect(() => {
+    const unsubscribe = subscribe('Game', (data: { base_seed: number }) => {
+      if (data.base_seed !== undefined) {
+        setSeedHistory(prev => {
+          if (prev[0] === data.base_seed) return prev;
+          return [data.base_seed, ...prev.filter(s => s !== data.base_seed)].slice(0, 50);
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [subscribe]);
 
   const fetchConfig = async () => {
     try {
@@ -184,6 +199,60 @@ export default function QuickSettingsSidebar() {
             min={0.05} max={1.0} step={0.01}
             onChange={(v) => handleUpdate({...config, enemy_spawn_interval_max: v, enemy_spawn_interval_min: Math.min(v, config.enemy_spawn_interval_min)})}
           />
+        </section>
+
+        {/* Seed History */}
+        <section className="space-y-4 pt-4 border-t border-slate-800">
+          <div className="flex justify-between items-center">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recent Seeds History</label>
+            {seedHistory.length > 0 && (
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(seedHistory.join('\n'));
+                  showToast('All seeds copied to clipboard', 'success');
+                }}
+                className="flex items-center text-[10px] text-blue-400 hover:text-blue-300 transition font-bold"
+              >
+                <FileText size={12} className="mr-1" /> COPY ALL
+              </button>
+            )}
+          </div>
+          
+          {seedHistory.length === 0 ? (
+             <div className="text-[10px] text-slate-600 italic text-center py-2 bg-slate-950/30 rounded border border-dashed border-slate-800/50">
+               No seeds recorded yet...
+             </div>
+          ) : (
+            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+              {seedHistory.map((seed, i) => (
+                <div key={seed} className="group flex items-center justify-between bg-slate-950/50 hover:bg-slate-950 border border-slate-800/50 rounded-lg px-2 py-1.5 transition">
+                  <span className={`text-[11px] font-mono ${i === 0 ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                    {seed}
+                    {i === 0 && <span className="ml-2 text-[8px] opacity-50 uppercase tracking-tighter">(LIVE)</span>}
+                  </span>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(seed.toString());
+                        showToast(`Seed ${seed} copied`, 'info');
+                      }}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"
+                      title="Copy seed"
+                    >
+                      <Copy size={12} />
+                    </button>
+                    <button 
+                      onClick={() => handleUpdate({...config!, default_seed: seed})}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-emerald-400"
+                      title="Re-run this seed"
+                    >
+                      <ReplayIcon size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 

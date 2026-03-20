@@ -14,17 +14,11 @@ export default function Console() {
 
   useEffect(() => {
     const unsubscribe = subscribe('Log', (data) => {
-      setLogs(prev => [...prev.slice(-199), data]);
+      setLogs(prev => [data, ...prev.slice(0, 199)]);
     });
 
     return () => unsubscribe();
   }, [subscribe]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
 
   const runCmd = async (cmd: string) => {
     try {
