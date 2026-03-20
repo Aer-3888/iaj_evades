@@ -18,9 +18,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
-    model::{EvaluationSummary, SavedModel},
+    model::{EvaluationSummary, ModelType, SavedModel},
     network::Network,
-    observation::{ObservationBuilder, INPUT_SIZE},
+    observation::{DualRayObservationBuilder, ObservationBuilder},
 };
 
 const EVAL_CPU_FRACTION: f32 = 0.75;
@@ -38,6 +38,8 @@ pub enum SeedFocusMode {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TrainingConfig {
+    #[serde(default)]
+    pub model_type: ModelType,
     pub episodes: usize,
     pub trainer_seed: u64,
     pub checkpoint_every: usize,
@@ -61,6 +63,7 @@ pub struct TrainingConfig {
 impl Default for TrainingConfig {
     fn default() -> Self {
         Self {
+            model_type: ModelType::Dqn,
             episodes: 500000,
             trainer_seed: 7,
             checkpoint_every: 100,
@@ -240,8 +243,37 @@ enum OptimizationRuntime {
     },
 }
 
+/// Unified observation builder that handles both Dqn and Dqn2 model types.
+enum ObsBuilderState {
+    Dqn(ObservationBuilder),
+    Dqn2(DualRayObservationBuilder),
+}
+
+impl ObsBuilderState {
+    fn new(model_type: ModelType) -> Self {
+        match model_type {
+            ModelType::Dqn => ObsBuilderState::Dqn(ObservationBuilder::default()),
+            ModelType::Dqn2 => ObsBuilderState::Dqn2(DualRayObservationBuilder::default()),
+        }
+    }
+
+    fn reset(&mut self, state: &GameState) {
+        match self {
+            ObsBuilderState::Dqn(b) => b.reset(state),
+            ObsBuilderState::Dqn2(b) => b.reset(state),
+        }
+    }
+
+    fn build_vec(&mut self, state: &GameState) -> Vec<f32> {
+        match self {
+            ObsBuilderState::Dqn(b) => b.build(state).to_vec(),
+            ObsBuilderState::Dqn2(b) => b.build(state).to_vec(),
+        }
+    }
+}
+
 impl EvaluationRuntime {
-    fn choose(network: &Network, seeds: &[u64], action_repeat: usize) -> anyhow::Result<Self> {
+    fn choose(network: &Network, seeds: &[u64], action_repeat: usize, model_type: ModelType) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
             .unwrap_or(1);
@@ -260,11 +292,11 @@ impl EvaluationRuntime {
             .context("failed to build evaluation thread pool")?;
 
         let sequential_benchmark = benchmark_evaluation(
-            || evaluate_seed_batch_sequential(network, seeds, action_repeat),
+            || evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type),
             2,
         );
         let parallel_benchmark = benchmark_evaluation(
-            || pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat)),
+            || pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)),
             2,
         );
 
@@ -288,11 +320,12 @@ impl EvaluationRuntime {
         network: &Network,
         seeds: &[u64],
         action_repeat: usize,
+        model_type: ModelType,
     ) -> Vec<SeedEpisodeSummary> {
         match self {
-            Self::Sequential => evaluate_seed_batch_sequential(network, seeds, action_repeat),
+            Self::Sequential => evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type),
             Self::Parallel { pool } => {
-                pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat))
+                pool.install(|| evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type))
             }
         }
     }
@@ -305,6 +338,7 @@ impl OptimizationRuntime {
         batch_size: usize,
         gamma: f32,
         learning_rate: f32,
+        input_size: usize,
     ) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -322,7 +356,7 @@ impl OptimizationRuntime {
             .num_threads(desired_threads)
             .build()
             .context("failed to build optimizer thread pool")?;
-        let benchmark_batch = build_optimizer_benchmark_batch(batch_size);
+        let benchmark_batch = build_optimizer_benchmark_batch(batch_size, input_size);
         let chunk_size = benchmark_batch.len().div_ceil(desired_threads * 2).max(1);
 
         let sequential_benchmark = benchmark_runtime(
@@ -435,10 +469,11 @@ pub fn train(
     let resume_state = resume_model
         .map(|model| validate_resume_model(&config, model))
         .transpose()?;
+    let input_size = config.model_type.input_size();
     let mut online = if let Some(resume) = &resume_state {
         resume.network.clone()
     } else {
-        let mut sizes = vec![INPUT_SIZE];
+        let mut sizes = vec![input_size];
         sizes.extend(config.hidden_sizes.iter().copied());
         sizes.push(Action::ALL.len());
         Network::new(&sizes, &mut rng)
@@ -452,11 +487,12 @@ pub fn train(
         config.batch_size,
         config.gamma,
         config.learning_rate,
+        input_size,
     )?;
     profile_stats.optimization_runtime_choice += optimizer_runtime_start.elapsed();
     let eval_runtime_start = Instant::now();
     let evaluation_runtime =
-        EvaluationRuntime::choose(&online, &config.fixed_training_seeds, config.action_repeat)?;
+        EvaluationRuntime::choose(&online, &config.fixed_training_seeds, config.action_repeat, config.model_type)?;
     profile_stats.evaluation_runtime_choice += eval_runtime_start.elapsed();
 
     let mut best_metrics = resume_state
@@ -500,7 +536,7 @@ pub fn train(
         cycle_index += 1;
 
         let mut env = GameState::new(GameConfig::default(), Some(seed));
-        let mut observation = ObservationBuilder::default();
+        let mut observation = ObsBuilderState::new(config.model_type);
         observation.reset(&env);
         let mut episode_return = 0.0;
         let mut episode_evades = 0u32;
@@ -508,7 +544,7 @@ pub fn train(
 
         while !env.done {
             let env_policy_start = Instant::now();
-            let state = observation.build(&env).to_vec();
+            let state = observation.build_vec(&env);
             let epsilon = epsilon_for_step(&config, total_steps);
             let action_index = select_action(&online, &state, epsilon, &mut rng);
             let action = Action::ALL[action_index];
@@ -522,7 +558,7 @@ pub fn train(
                 reward += result.reward;
             }
 
-            let next_state = observation.build(&env).to_vec();
+            let next_state = observation.build_vec(&env);
             profile_stats.environment_and_policy += env_policy_start.elapsed();
             let done = env.done;
             episode_return += reward;
@@ -574,6 +610,7 @@ pub fn train(
             &config.fixed_training_seeds,
             config.action_repeat,
             &evaluation_runtime,
+            config.model_type,
         );
         focus_training_seeds = match config.seed_focus_mode {
             SeedFocusMode::Original => Vec::new(),
@@ -589,6 +626,7 @@ pub fn train(
             save_model(
                 output_dir.join("best_model.json"),
                 SavedModel::new(
+                    config.model_type,
                     config.hidden_sizes.clone(),
                     config.fixed_training_seeds.clone(),
                     config.random_seed_count_per_cycle,
@@ -658,6 +696,7 @@ pub fn train(
         if (episode + 1) % config.checkpoint_every == 0 {
             let save_start = Instant::now();
             let saved_model = SavedModel::new(
+                config.model_type,
                 config.hidden_sizes.clone(),
                 config.fixed_training_seeds.clone(),
                 config.random_seed_count_per_cycle,
@@ -691,6 +730,7 @@ pub fn train(
     save_model(
         output_dir.join("final_model.json"),
         SavedModel::new(
+            config.model_type,
             config.hidden_sizes.clone(),
             config.fixed_training_seeds.clone(),
             config.random_seed_count_per_cycle,
@@ -716,12 +756,17 @@ pub fn train(
 }
 
 pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSummary {
+    let model_type = match model.model_type.as_str() {
+        "dqn2" => ModelType::Dqn2,
+        _ => ModelType::Dqn,
+    };
     let network = Network::from_layers(model.layers.clone());
     evaluate_network_with_results(
         &network,
         seeds,
         model.action_repeat,
         &EvaluationRuntime::Sequential,
+        model_type,
     )
     .summary
 }
@@ -734,18 +779,8 @@ fn save_model(path: impl AsRef<Path>, model: SavedModel) -> anyhow::Result<()> {
 
 fn validate_resume_model(
     config: &TrainingConfig,
-    model: SavedModel,
+    mut model: SavedModel,
 ) -> anyhow::Result<ResumeState> {
-    if model.model_type != "dqn" {
-        anyhow::bail!("resume model type {} is not supported", model.model_type);
-    }
-    if model.input_size != INPUT_SIZE {
-        anyhow::bail!(
-            "resume model input size {} does not match expected {}",
-            model.input_size,
-            INPUT_SIZE
-        );
-    }
     if model.output_size != Action::ALL.len() {
         anyhow::bail!(
             "resume model output size {} does not match expected {}",
@@ -758,6 +793,47 @@ fn validate_resume_model(
             "resume model hidden sizes {:?} do not match configured {:?}",
             model.hidden_sizes,
             config.hidden_sizes
+        );
+    }
+
+    let expected_input = config.model_type.input_size();
+
+    // Allow cross-type resume by zero-expanding the first layer weights.
+    if model.input_size != expected_input {
+        let first = model.layers.first_mut().ok_or_else(|| {
+            anyhow::anyhow!("resume model has no layers")
+        })?;
+        let old_in = first.input_size;
+        let out = first.output_size;
+
+        if expected_input > old_in {
+            // Expand: insert zero-weight columns for the new inputs.
+            let extra = expected_input - old_in;
+            let mut new_weights = Vec::with_capacity(out * expected_input);
+            for out_idx in 0..out {
+                // Original columns
+                let row_start = out_idx * old_in;
+                new_weights.extend_from_slice(&first.weights[row_start..row_start + old_in]);
+                // Zero-padded new columns
+                new_weights.extend(std::iter::repeat(0.0f32).take(extra));
+            }
+            first.weights = new_weights;
+            first.input_size = expected_input;
+        } else {
+            // Shrink: drop the extra input columns.
+            let mut new_weights = Vec::with_capacity(out * expected_input);
+            for out_idx in 0..out {
+                let row_start = out_idx * old_in;
+                new_weights.extend_from_slice(&first.weights[row_start..row_start + expected_input]);
+            }
+            first.weights = new_weights;
+            first.input_size = expected_input;
+        }
+        model.input_size = expected_input;
+
+        println!(
+            "cross-type resume: adjusted input layer {} -> {} inputs",
+            old_in, expected_input
         );
     }
 
@@ -787,12 +863,12 @@ fn episode_seed_cycle(
     seeds
 }
 
-fn build_optimizer_benchmark_batch(batch_size: usize) -> Vec<Transition> {
+fn build_optimizer_benchmark_batch(batch_size: usize, input_size: usize) -> Vec<Transition> {
     (0..batch_size.max(1))
         .map(|index| {
             let seed = index as f32 * 0.013;
-            let mut state = vec![0.0; INPUT_SIZE];
-            let mut next_state = vec![0.0; INPUT_SIZE];
+            let mut state = vec![0.0; input_size];
+            let mut next_state = vec![0.0; input_size];
             for (offset, value) in state.iter_mut().enumerate() {
                 *value = ((offset as f32 * 0.031) + seed).sin();
             }
@@ -900,8 +976,9 @@ fn evaluate_network_with_results(
     seeds: &[u64],
     action_repeat: usize,
     runtime: &EvaluationRuntime,
+    model_type: ModelType,
 ) -> EvaluationOutcome {
-    let seed_results = runtime.evaluate_batch(network, seeds, action_repeat);
+    let seed_results = runtime.evaluate_batch(network, seeds, action_repeat, model_type);
     let summary = aggregate_seed_results(&seed_results);
     EvaluationOutcome {
         summary,
@@ -963,9 +1040,10 @@ fn evaluate_seed_batch_sequential(
     network: &Network,
     seeds: &[u64],
     action_repeat: usize,
+    model_type: ModelType,
 ) -> Vec<SeedEpisodeSummary> {
     seeds.iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat))
+        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
         .collect()
 }
 
@@ -973,20 +1051,21 @@ fn evaluate_seed_batch_parallel(
     network: &Network,
     seeds: &[u64],
     action_repeat: usize,
+    model_type: ModelType,
 ) -> Vec<SeedEpisodeSummary> {
     seeds.par_iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat))
+        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
         .collect()
 }
 
-fn evaluate_seed(network: &Network, seed: u64, action_repeat: usize) -> SeedEpisodeSummary {
+fn evaluate_seed(network: &Network, seed: u64, action_repeat: usize, model_type: ModelType) -> SeedEpisodeSummary {
     let mut env = GameState::new(GameConfig::default(), Some(seed));
-    let mut observation = ObservationBuilder::default();
+    let mut observation = ObsBuilderState::new(model_type);
     observation.reset(&env);
     let mut episode_return = 0.0;
 
     while !env.done {
-        let state = observation.build(&env).to_vec();
+        let state = observation.build_vec(&env);
         let action = Action::ALL[greedy_action(network, &state)];
         for _ in 0..action_repeat {
             if env.done {
@@ -1140,6 +1219,7 @@ mod tests {
     fn resume_model_validation_keeps_progress_counters() {
         let config = TrainingConfig::default();
         let model = SavedModel::new(
+            ModelType::Dqn,
             config.hidden_sizes.clone(),
             config.fixed_training_seeds.clone(),
             config.random_seed_count_per_cycle,
@@ -1159,6 +1239,7 @@ mod tests {
     fn resume_model_validation_rejects_hidden_size_mismatch() {
         let config = TrainingConfig::default();
         let model = SavedModel::new(
+            ModelType::Dqn,
             vec![64, 64],
             config.fixed_training_seeds.clone(),
             config.random_seed_count_per_cycle,
@@ -1170,5 +1251,27 @@ mod tests {
         );
 
         assert!(validate_resume_model(&config, model).is_err());
+    }
+
+    #[test]
+    fn resume_dqn2_model_validation_keeps_progress_counters() {
+        let config = TrainingConfig {
+            model_type: ModelType::Dqn2,
+            ..TrainingConfig::default()
+        };
+        let model = SavedModel::new(
+            ModelType::Dqn2,
+            config.hidden_sizes.clone(),
+            config.fixed_training_seeds.clone(),
+            config.random_seed_count_per_cycle,
+            config.action_repeat,
+            10,
+            500,
+            EvaluationSummary::default(),
+            vec![],
+        );
+        let resume = validate_resume_model(&config, model).unwrap();
+        assert_eq!(resume.completed_episodes, 10);
+        assert_eq!(resume.total_steps, 500);
     }
 }

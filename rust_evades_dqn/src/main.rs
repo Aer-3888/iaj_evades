@@ -4,7 +4,7 @@ use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use rust_evades_dqn::{
-    model::SavedModel,
+    model::{ModelType, SavedModel},
     trainer::{
         default_training_seeds, evaluate_saved_model, train, SeedFocusMode, TrainingConfig,
     },
@@ -21,6 +21,21 @@ impl From<CliSeedFocusMode> for SeedFocusMode {
         match value {
             CliSeedFocusMode::Original => SeedFocusMode::Original,
             CliSeedFocusMode::BadSeeds => SeedFocusMode::BadSeeds,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliModelType {
+    Dqn,
+    Dqn2,
+}
+
+impl From<CliModelType> for ModelType {
+    fn from(value: CliModelType) -> Self {
+        match value {
+            CliModelType::Dqn => ModelType::Dqn,
+            CliModelType::Dqn2 => ModelType::Dqn2,
         }
     }
 }
@@ -65,6 +80,9 @@ enum Command {
 
         #[arg(long, value_enum, default_value_t = CliSeedFocusMode::BadSeeds)]
         seed_focus_mode: CliSeedFocusMode,
+
+        #[arg(long, value_enum, default_value_t = CliModelType::Dqn)]
+        model_type: CliModelType,
     },
     Evaluate {
         #[arg(long)]
@@ -93,8 +111,10 @@ fn main() -> anyhow::Result<()> {
             action_repeat,
             checkpoint_every,
             seed_focus_mode,
+            model_type,
         } => {
             let config = TrainingConfig {
+                model_type: model_type.into(),
                 episodes,
                 trainer_seed,
                 checkpoint_every,

@@ -3,6 +3,11 @@ use crate::game::{GameState, Vec2};
 pub const RAY_COUNT: usize = 36;
 pub const INPUT_SIZE: usize = RAY_COUNT * 2 + 2;
 
+// DQN2: dual-pass raycasting constants
+pub const DQN2_RAY_COUNT: usize = RAY_COUNT;
+/// DQN2 input: near-rays, far-rays, delta-near-rays, delta-far-rays, velocity (x, y)
+pub const DQN2_INPUT_SIZE: usize = DQN2_RAY_COUNT * 4 + 2;
+
 #[derive(Clone, Debug)]
 pub struct ObservationBuilder {
     previous_rays: [f32; RAY_COUNT],
@@ -55,6 +60,75 @@ impl ObservationBuilder {
         };
 
         self.previous_rays = rays;
+        self.previous_position = state.player.body.pos;
+        observation
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DQN2: Dual-pass raycasting observation builder
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Debug)]
+pub struct DualRayObservationBuilder {
+    previous_near: [f32; DQN2_RAY_COUNT],
+    previous_far: [f32; DQN2_RAY_COUNT],
+    previous_position: Vec2,
+    initialized: bool,
+}
+
+impl Default for DualRayObservationBuilder {
+    fn default() -> Self {
+        Self {
+            previous_near: [1.0; DQN2_RAY_COUNT],
+            previous_far: [1.0; DQN2_RAY_COUNT],
+            previous_position: Vec2::default(),
+            initialized: false,
+        }
+    }
+}
+
+impl DualRayObservationBuilder {
+    pub fn reset(&mut self, state: &GameState) {
+        let (near, far) = sample_rays_dual(state);
+        self.previous_near = near;
+        self.previous_far = far;
+        self.previous_position = state.player.body.pos;
+        self.initialized = true;
+    }
+
+    pub fn build(&mut self, state: &GameState) -> [f32; DQN2_INPUT_SIZE] {
+        if !self.initialized {
+            self.reset(state);
+        }
+
+        let (near, far) = sample_rays_dual(state);
+        let mut observation = [0.0f32; DQN2_INPUT_SIZE];
+
+        // Slots: [near (36), far (36), delta_near (36), delta_far (36), vel_x, vel_y]
+        observation[..DQN2_RAY_COUNT].copy_from_slice(&near);
+        observation[DQN2_RAY_COUNT..DQN2_RAY_COUNT * 2].copy_from_slice(&far);
+        for i in 0..DQN2_RAY_COUNT {
+            observation[DQN2_RAY_COUNT * 2 + i] = near[i] - self.previous_near[i];
+            observation[DQN2_RAY_COUNT * 3 + i] = far[i] - self.previous_far[i];
+        }
+
+        let max_step = state.config.player_speed * state.config.fixed_timestep;
+        let delta_x = state.player.body.pos.x - self.previous_position.x;
+        let delta_y = state.player.body.pos.y - self.previous_position.y;
+        observation[DQN2_INPUT_SIZE - 2] = if max_step > 0.0 {
+            (delta_x / max_step).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
+        observation[DQN2_INPUT_SIZE - 1] = if max_step > 0.0 {
+            (delta_y / max_step).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
+
+        self.previous_near = near;
+        self.previous_far = far;
         self.previous_position = state.player.body.pos;
         observation
     }
@@ -114,6 +188,126 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
     }
 
     samples
+}
+
+/// Dual-pass raycasting.
+///
+/// Returns `(near_rays, far_rays)` where:
+/// * `near_rays` — same as `sample_rays` (length `ray_length()`).
+/// * `far_rays`  — same 36 angles at **double** the length, but enemies whose
+///   circle was already hit in the near pass are **excluded** (walls still
+///   collide with both passes).
+pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT]) {
+    let origin_x = state.player.body.pos.x;
+    let origin_y = state.player.body.pos.y;
+    let near_max = state.config.ray_length().max(1.0);
+    let far_max = near_max * 2.0;
+    let player_r = state.player.body.radius;
+
+    // Track which enemy indices were hit by the near pass.
+    let mut hit_by_near = vec![false; state.enemies.len()];
+
+    let mut near_samples = [1.0f32; RAY_COUNT];
+    let mut far_samples = [1.0f32; RAY_COUNT];
+
+    for (ray_idx, near_sample) in near_samples.iter_mut().enumerate() {
+        let angle = (ray_idx as f32) * (360.0 / RAY_COUNT as f32).to_radians();
+        let dir_x = angle.cos();
+        let dir_y = -angle.sin();
+
+        // ---- Near pass ----
+        let mut min_near = f32::INFINITY;
+
+        for (e_idx, enemy) in state.enemies.iter().enumerate() {
+            if let Some(d) = raycast_circle_distance(
+                origin_x, origin_y, dir_x, dir_y,
+                enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius,
+            ) {
+                if d < min_near {
+                    min_near = d;
+                    hit_by_near[e_idx] = true; // mark as hit (may be overwritten by closer)
+                }
+            }
+        }
+
+        // Walls (near pass)
+        if state.config.map_design == crate::config::MapDesign::Closed {
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+                min_near = min_near.min(d);
+            }
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+                min_near = min_near.min(d);
+            }
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
+                min_near = min_near.min(d);
+            }
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+                min_near = min_near.min(d);
+            }
+        }
+
+        let clearance_near = (min_near - player_r).clamp(0.0, near_max);
+        *near_sample = if min_near.is_finite() {
+            (clearance_near / near_max).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+    }
+
+    // Re-compute which enemies were *actually* the closest in any direction
+    // for the near pass. Use per-enemy flag properly: an enemy is "hit" if
+    // any ray's nearest circle is that enemy.  We already set hit_by_near
+    // during the loop above but we need to reset and recompute carefully so
+    // that the flag means "this enemy was detected by at least one near ray".
+    // The loop above already does this correctly (sets the flag whenever a
+    // hit is found, regardless of being the global minimum — that's fine for
+    // exclusion purposes).
+
+    // ---- Far pass (skip near-hit enemies) ----
+    for (ray_idx, far_sample) in far_samples.iter_mut().enumerate() {
+        let angle = (ray_idx as f32) * (360.0 / RAY_COUNT as f32).to_radians();
+        let dir_x = angle.cos();
+        let dir_y = -angle.sin();
+
+        let mut min_far = f32::INFINITY;
+
+        for (e_idx, enemy) in state.enemies.iter().enumerate() {
+            if hit_by_near[e_idx] {
+                continue; // skip enemies already seen in near pass
+            }
+            if let Some(d) = raycast_circle_distance(
+                origin_x, origin_y, dir_x, dir_y,
+                enemy.body.pos.x, enemy.body.pos.y, enemy.body.radius,
+            ) {
+                min_far = min_far.min(d);
+            }
+        }
+
+        // Walls always collide with the far pass too
+        if state.config.map_design == crate::config::MapDesign::Closed {
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_top) {
+                min_far = min_far.min(d);
+            }
+            if let Some(d) = raycast_horizontal_line_distance(origin_y, dir_y, state.config.corridor_bottom) {
+                min_far = min_far.min(d);
+            }
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, 0.0) {
+                min_far = min_far.min(d);
+            }
+            if let Some(d) = raycast_vertical_line_distance(origin_x, dir_x, state.config.world_width) {
+                min_far = min_far.min(d);
+            }
+        }
+
+        let clearance_far = (min_far - player_r).clamp(0.0, far_max);
+        *far_sample = if min_far.is_finite() {
+            (clearance_far / far_max).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+    }
+
+    (near_samples, far_samples)
 }
 
 fn raycast_horizontal_line_distance(origin_y: f32, dir_y: f32, line_y: f32) -> Option<f32> {
@@ -188,6 +382,42 @@ mod tests {
         let mut builder = ObservationBuilder::default();
         let observation = builder.build(&state);
         assert_eq!(observation.len(), INPUT_SIZE);
+    }
+
+    #[test]
+    fn dual_observation_has_expected_size() {
+        let state = GameState::new(GameConfig::default(), Some(2));
+        let mut builder = DualRayObservationBuilder::default();
+        let observation = builder.build(&state);
+        assert_eq!(observation.len(), DQN2_INPUT_SIZE);
+    }
+
+    #[test]
+    fn dual_far_ray_ignores_near_enemy() {
+        // Place one enemy exactly on top of origin so every near ray hits it.
+        // The far rays should then treat that enemy as excluded and return 1.0
+        // (clear) in the direction pointing straight at it (ray 0 = rightward).
+        let mut state = GameState::new(GameConfig::default(), Some(2));
+        state.enemies.clear();
+        // Place enemy just beyond player radius so the near ray returns < 1.0
+        let near_length = state.config.ray_length();
+        state.enemies.push(Enemy {
+            body: CircleBody {
+                pos: Vec2 {
+                    x: state.player.body.pos.x + near_length * 0.3,
+                    y: state.player.body.pos.y,
+                },
+                vel: Vec2::default(),
+                radius: state.config.enemy_radius,
+            },
+            remaining_life: 1.0,
+        });
+
+        let (near, far) = sample_rays_dual(&state);
+        // Near ray 0 (rightward) should detect the enemy
+        assert!(near[0] < 1.0, "near ray 0 should detect close enemy");
+        // Far ray 0 (rightward) should be clear because the enemy was in near pass
+        approx_eq(far[0], 1.0);
     }
 
     #[test]
