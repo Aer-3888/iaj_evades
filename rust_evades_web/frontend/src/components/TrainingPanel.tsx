@@ -161,7 +161,11 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     steps_per_second: 0,
     timeouts: 0,
     loss: 0,
-    global_best_survival: 0
+    global_best_survival: 0,
+    mean_predicted_q: 0,
+    mean_target_q: 0,
+    mean_abs_td_error: 0,
+    terminal_fraction: 0,
   };
 
   const handleStart = async () => {
@@ -205,27 +209,35 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
 
   const maxEpisode = latest.episode > 0 ? latest.episode : 1;
 
-  const ROLLING_WINDOW = 1000;
-
-  const computeRolling = (field: keyof typeof history[0]): number[] => {
-    const result: number[] = [];
-    let windowStart = 0;
-    let sum = 0;
-    for (let i = 0; i < history.length; i++) {
-      sum += history[i][field] as number;
-      while (history[i].episode - history[windowStart].episode > ROLLING_WINDOW) {
-        sum -= history[windowStart][field] as number;
-        windowStart++;
-      }
-      result.push(sum / (i - windowStart + 1));
+  const computeRolling = (field: keyof TrainingProgress): number[] => {
+    if (history.length === 0) {
+      return [];
     }
-    return result;
+
+    const windowSize = Math.max(5, Math.min(100, Math.round(history.length * 0.05)));
+    const halfWindow = Math.floor(windowSize / 2);
+
+    return history.map((_, i) => {
+      const start = Math.max(0, i - halfWindow);
+      const end = Math.min(history.length - 1, i + halfWindow);
+      let total = 0;
+
+      for (let j = start; j <= end; j++) {
+        total += history[j][field] as number;
+      }
+
+      return total / (end - start + 1);
+    });
   };
 
   const rollingSurvival = computeRolling('avg_survival');
   const rollingReturn = computeRolling('avg_return');
   const rollingLoss = computeRolling('loss');
   const rollingTimeouts = computeRolling('timeouts');
+  const rollingPredictedQ = computeRolling('mean_predicted_q');
+  const rollingTargetQ = computeRolling('mean_target_q');
+  const rollingTdError = computeRolling('mean_abs_td_error');
+  const rollingTerminalFraction = computeRolling('terminal_fraction');
 
   const computedHistory = history.map((d, i) => ({
     ...d,
@@ -234,6 +246,10 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
     rolling_avg_return: rollingReturn[i],
     rolling_loss_log: Math.log10(Math.max(1e-10, rollingLoss[i])),
     rolling_timeouts: rollingTimeouts[i],
+    rolling_mean_predicted_q: rollingPredictedQ[i],
+    rolling_mean_target_q: rollingTargetQ[i],
+    rolling_mean_abs_td_error: rollingTdError[i],
+    rolling_terminal_fraction: rollingTerminalFraction[i],
   }));
 
   const xAxisProps = {
@@ -686,6 +702,66 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
               <Line yAxisId="left" type="monotone" dataKey="timeouts" name="Wins" stroke="#f43f5e" strokeWidth={2} dot={true} r={2} />
               <Line yAxisId="right" type="monotone" dataKey="avg_survival" name="Avg Survival" stroke="#3b82f6" strokeWidth={2} dot={false} />
               <Line yAxisId="left" type="monotone" dataKey="rolling_timeouts" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Wins" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-80">
+          <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center">
+            <ChartIcon size={16} className="mr-2" /> Q Values
+          </h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={computedHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis {...xAxisProps} />
+              <YAxis stroke="#64748b" fontSize={12} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
+                labelFormatter={tooltipLabelFormatter}
+              />
+              <Line type="monotone" dataKey="mean_predicted_q" stroke="#22c55e" strokeWidth={2} dot={false} name="Mean Predicted Q" />
+              <Line type="monotone" dataKey="mean_target_q" stroke="#38bdf8" strokeWidth={2} dot={false} name="Mean Target Q" />
+              <Line type="monotone" dataKey="rolling_mean_predicted_q" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Predicted Rolling Avg" />
+              <Line type="monotone" dataKey="rolling_mean_target_q" stroke="#fb7185" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Target Rolling Avg" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-80">
+          <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center">
+            <ChartIcon size={16} className="mr-2" /> TD Error
+          </h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={computedHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis {...xAxisProps} />
+              <YAxis stroke="#64748b" fontSize={12} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
+                labelFormatter={tooltipLabelFormatter}
+              />
+              <Line type="monotone" dataKey="mean_abs_td_error" stroke="#f97316" strokeWidth={2} dot={false} name="Mean Abs TD Error" />
+              <Line type="monotone" dataKey="rolling_mean_abs_td_error" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Avg" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl h-80 lg:col-span-2">
+          <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center">
+            <ChartIcon size={16} className="mr-2" /> Sampled Batch Terminals
+          </h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={computedHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis {...xAxisProps} />
+              <YAxis stroke="#64748b" fontSize={12} domain={[0, 1]} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
+                labelFormatter={tooltipLabelFormatter}
+                formatter={(val: number) => [`${(val * 100).toFixed(1)}%`, 'Terminal Fraction']}
+              />
+              <Line type="monotone" dataKey="terminal_fraction" stroke="#a78bfa" strokeWidth={2} dot={false} name="Terminal Fraction" />
+              <Line type="monotone" dataKey="rolling_terminal_fraction" stroke="#facc15" strokeWidth={1.5} dot={false} strokeDasharray="4 3" name="Rolling Avg" />
             </LineChart>
           </ResponsiveContainer>
         </div>

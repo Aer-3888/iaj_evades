@@ -484,6 +484,56 @@ pub struct TrainingProgress {
     pub timeouts: u32,
     pub loss: f32,
     pub steps_per_second: f32,
+    pub mean_predicted_q: f32,
+    pub mean_target_q: f32,
+    pub mean_abs_td_error: f32,
+    pub terminal_fraction: f32,
+}
+
+fn batch_diagnostics(
+    online: &Network,
+    target_network: &Network,
+    batch: &[Transition],
+    gamma: f32,
+) -> (f32, f32, f32, f32) {
+    if batch.is_empty() {
+        return (0.0, 0.0, 0.0, 0.0);
+    }
+
+    let mut predicted_q_sum = 0.0;
+    let mut target_q_sum = 0.0;
+    let mut abs_td_error_sum = 0.0;
+    let mut terminal_count = 0.0;
+
+    for transition in batch {
+        let predicted = online.predict(&transition.state);
+        let next_q_values = if transition.done {
+            vec![0.0; predicted.len()]
+        } else {
+            target_network.predict(&transition.next_state)
+        };
+        let next_best = next_q_values.into_iter().fold(f32::NEG_INFINITY, f32::max);
+        let target = transition.reward
+            + if transition.done {
+                0.0
+            } else {
+                gamma * next_best
+            };
+        let prediction = predicted[transition.action];
+
+        predicted_q_sum += prediction;
+        target_q_sum += target;
+        abs_td_error_sum += (prediction - target).abs();
+        terminal_count += if transition.done { 1.0 } else { 0.0 };
+    }
+
+    let denom = batch.len() as f32;
+    (
+        predicted_q_sum / denom,
+        target_q_sum / denom,
+        abs_td_error_sum / denom,
+        terminal_count / denom,
+    )
 }
 
 pub fn train(
@@ -588,6 +638,10 @@ pub fn train(
         let mut episode_return = 0.0;
         let mut episode_evades = 0u32;
         let mut losses = Vec::new();
+        let mut mean_predicted_q = 0.0;
+        let mut mean_target_q = 0.0;
+        let mut mean_abs_td_error = 0.0;
+        let mut terminal_fraction = 0.0;
 
         while !env.done {
             let env_policy_start = Instant::now();
@@ -629,6 +683,12 @@ pub fn train(
                 profile_stats.replay_sampling += sample_start.elapsed();
                 let batch = batch_refs.into_iter().cloned().collect::<Vec<_>>();
                 let train_start = Instant::now();
+                (
+                    mean_predicted_q,
+                    mean_target_q,
+                    mean_abs_td_error,
+                    terminal_fraction,
+                ) = batch_diagnostics(&online, &target, &batch, config.gamma);
                 let loss = optimization_runtime.train_batch(
                     &mut online,
                     &target,
@@ -740,6 +800,10 @@ pub fn train(
                 timeouts: eval.summary.timeouts,
                 loss: mean_loss,
                 steps_per_second: sps,
+                mean_predicted_q,
+                mean_target_q,
+                mean_abs_td_error,
+                terminal_fraction,
             });
         }
 

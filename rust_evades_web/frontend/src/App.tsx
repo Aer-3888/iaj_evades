@@ -33,6 +33,81 @@ export interface TrainingProgress {
   loss: number;
   steps_per_second: number;
   global_best_survival: number;
+  mean_predicted_q: number;
+  mean_target_q: number;
+  mean_abs_td_error: number;
+  terminal_fraction: number;
+}
+
+const MAX_TRAINING_POINTS = 1000;
+
+function interpolateTrainingProgress(a: TrainingProgress, b: TrainingProgress, t: number): TrainingProgress {
+  const lerp = (x: number, y: number) => x + (y - x) * t;
+  return {
+    episode: Math.round(lerp(a.episode, b.episode)),
+    total_steps: Math.round(lerp(a.total_steps, b.total_steps)),
+    epsilon: lerp(a.epsilon, b.epsilon),
+    last_return: lerp(a.last_return, b.last_return),
+    last_survival: lerp(a.last_survival, b.last_survival),
+    last_evades: lerp(a.last_evades, b.last_evades),
+    avg_survival: lerp(a.avg_survival, b.avg_survival),
+    min_survival: lerp(a.min_survival, b.min_survival),
+    avg_return: lerp(a.avg_return, b.avg_return),
+    avg_evades: lerp(a.avg_evades, b.avg_evades),
+    min_return: lerp(a.min_return, b.min_return),
+    timeouts: lerp(a.timeouts, b.timeouts),
+    loss: lerp(a.loss, b.loss),
+    steps_per_second: lerp(a.steps_per_second, b.steps_per_second),
+    global_best_survival: lerp(a.global_best_survival, b.global_best_survival),
+    mean_predicted_q: lerp(a.mean_predicted_q, b.mean_predicted_q),
+    mean_target_q: lerp(a.mean_target_q, b.mean_target_q),
+    mean_abs_td_error: lerp(a.mean_abs_td_error, b.mean_abs_td_error),
+    terminal_fraction: lerp(a.terminal_fraction, b.terminal_fraction),
+  };
+}
+
+function pruneTrainingHistory(history: TrainingProgress[], maxPoints = MAX_TRAINING_POINTS): TrainingProgress[] {
+  if (history.length <= maxPoints) {
+    return history;
+  }
+
+  if (maxPoints <= 1) {
+    return [history[history.length - 1]];
+  }
+
+  const startStep = 0;
+  const endStep = history[history.length - 1].total_steps;
+
+  if (endStep <= startStep) {
+    return history.slice(-maxPoints);
+  }
+
+  const result: TrainingProgress[] = [];
+  let leftIndex = 0;
+
+  for (let i = 0; i < maxPoints; i++) {
+    const targetStep = startStep + ((endStep - startStep) * i) / (maxPoints - 1);
+
+    while (
+      leftIndex + 1 < history.length &&
+      history[leftIndex + 1].total_steps < targetStep
+    ) {
+      leftIndex++;
+    }
+
+    const left = history[leftIndex];
+    const right = history[Math.min(leftIndex + 1, history.length - 1)];
+
+    if (leftIndex === history.length - 1 || right.total_steps === left.total_steps) {
+      result.push(left);
+      continue;
+    }
+
+    const t = Math.max(0, Math.min(1, (targetStep - left.total_steps) / (right.total_steps - left.total_steps)));
+    result.push(interpolateTrainingProgress(left, right, t));
+  }
+
+  return result;
 }
 
 function AppContent() {
@@ -49,7 +124,7 @@ function AppContent() {
     });
 
     const unsubTraining = subscribe('Training', (data: TrainingProgress) => {
-      setTrainingHistory(prev => [...prev, data]);
+      setTrainingHistory(prev => pruneTrainingHistory([...prev, data]));
     });
 
     const checkTrainingStatus = async () => {
@@ -67,7 +142,7 @@ function AppContent() {
         const res = await fetch('/api/train/history');
         const history: TrainingProgress[] = await res.json();
         if (history.length > 0) {
-          setTrainingHistory(history);
+          setTrainingHistory(pruneTrainingHistory(history));
         }
       } catch (e) {
         console.error('Failed to fetch training history', e);

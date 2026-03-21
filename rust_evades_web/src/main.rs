@@ -30,6 +30,8 @@ use training_manager::TrainingManager;
 use cmd_runner::{CmdRunner, LogLine};
 use evaluation_manager::{EvaluationManager, EvaluationProgress};
 
+const MAX_TRAINING_POINTS: usize = 1000;
+
 struct AppState {
     game_state: RwLock<GameState>,
     last_action: RwLock<Action>,
@@ -62,6 +64,79 @@ struct EngineStatus {
     running: bool,
     ai_mode: bool,
     has_model: bool,
+}
+
+fn interpolate_training_progress(
+    a: &TrainingProgress,
+    b: &TrainingProgress,
+    t: f64,
+) -> TrainingProgress {
+    let lerp = |x: f64, y: f64| x + (y - x) * t;
+    TrainingProgress {
+        episode: lerp(a.episode as f64, b.episode as f64).round() as usize,
+        total_steps: lerp(a.total_steps as f64, b.total_steps as f64).round() as usize,
+        epsilon: lerp(a.epsilon as f64, b.epsilon as f64) as f32,
+        last_return: lerp(a.last_return as f64, b.last_return as f64) as f32,
+        last_survival: lerp(a.last_survival as f64, b.last_survival as f64) as f32,
+        last_evades: lerp(a.last_evades as f64, b.last_evades as f64).round() as u32,
+        avg_survival: lerp(a.avg_survival as f64, b.avg_survival as f64) as f32,
+        min_survival: lerp(a.min_survival as f64, b.min_survival as f64) as f32,
+        avg_return: lerp(a.avg_return as f64, b.avg_return as f64) as f32,
+        avg_evades: lerp(a.avg_evades as f64, b.avg_evades as f64) as f32,
+        min_return: lerp(a.min_return as f64, b.min_return as f64) as f32,
+        timeouts: lerp(a.timeouts as f64, b.timeouts as f64).round() as u32,
+        loss: lerp(a.loss as f64, b.loss as f64) as f32,
+        steps_per_second: lerp(a.steps_per_second as f64, b.steps_per_second as f64) as f32,
+        global_best_survival: lerp(a.global_best_survival as f64, b.global_best_survival as f64) as f32,
+        mean_predicted_q: lerp(a.mean_predicted_q as f64, b.mean_predicted_q as f64) as f32,
+        mean_target_q: lerp(a.mean_target_q as f64, b.mean_target_q as f64) as f32,
+        mean_abs_td_error: lerp(a.mean_abs_td_error as f64, b.mean_abs_td_error as f64) as f32,
+        terminal_fraction: lerp(a.terminal_fraction as f64, b.terminal_fraction as f64) as f32,
+    }
+}
+
+fn prune_training_history(history: &[TrainingProgress], max_points: usize) -> Vec<TrainingProgress> {
+    if history.len() <= max_points {
+        return history.to_vec();
+    }
+
+    if max_points <= 1 {
+        return vec![history[history.len() - 1].clone()];
+    }
+
+    let start_step = 0.0;
+    let end_step = history[history.len() - 1].total_steps as f64;
+
+    if end_step <= start_step {
+        return history[history.len() - max_points..].to_vec();
+    }
+
+    let mut result = Vec::with_capacity(max_points);
+    let mut left_index = 0usize;
+
+    for i in 0..max_points {
+        let target_step = start_step + ((end_step - start_step) * i as f64) / (max_points - 1) as f64;
+
+        while left_index + 1 < history.len() && (history[left_index + 1].total_steps as f64) < target_step {
+            left_index += 1;
+        }
+
+        let left = &history[left_index];
+        let right_index = (left_index + 1).min(history.len() - 1);
+        let right = &history[right_index];
+
+        if left_index == history.len() - 1 || right.total_steps == left.total_steps {
+            result.push(left.clone());
+            continue;
+        }
+
+        let t = ((target_step - left.total_steps as f64)
+            / (right.total_steps as f64 - left.total_steps as f64))
+            .clamp(0.0, 1.0);
+        result.push(interpolate_training_progress(left, right, t));
+    }
+
+    result
 }
 
 #[tokio::main]
@@ -129,7 +204,11 @@ async fn main() {
         loop {
             tokio::select! {
                 Ok(progress) = training_rx.recv() => {
-                    training_history_bridge.write().unwrap().push(progress.clone());
+                    let mut history = training_history_bridge.write().unwrap();
+                    history.push(progress.clone());
+                    if history.len() > MAX_TRAINING_POINTS {
+                        *history = prune_training_history(&history, MAX_TRAINING_POINTS);
+                    }
                     let msg = HubMessage::Training(progress);
                     let _ = tx_bridge.send(serde_json::to_string(&msg).unwrap());
                 }
