@@ -6,7 +6,10 @@ use rust_evades::config::MapDesign;
 
 use rust_evades_dqn::{
     model::{ModelType, SavedModel},
-    trainer::{default_training_seeds, evaluate_saved_model, train, SeedFocusMode, TrainingConfig},
+    trainer::{
+        default_training_seeds, evaluate_saved_model, run_benchmark, train, BenchmarkMode,
+        SeedFocusMode, TrainingConfig,
+    },
 };
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -37,6 +40,12 @@ enum CliMapDesign {
     Arena,
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliBenchmarkMode {
+    FullTraining,
+    SimulatedSurvival,
+}
+
 impl From<CliMapDesign> for MapDesign {
     fn from(value: CliMapDesign) -> Self {
         match value {
@@ -52,6 +61,15 @@ impl From<CliModelType> for ModelType {
         match value {
             CliModelType::Dqn => ModelType::Dqn,
             CliModelType::Dqn2 => ModelType::Dqn2,
+        }
+    }
+}
+
+impl From<CliBenchmarkMode> for BenchmarkMode {
+    fn from(value: CliBenchmarkMode) -> Self {
+        match value {
+            CliBenchmarkMode::FullTraining => BenchmarkMode::FullTraining,
+            CliBenchmarkMode::SimulatedSurvival => BenchmarkMode::SimulatedSurvival,
         }
     }
 }
@@ -112,6 +130,34 @@ enum Command {
 
         #[arg(long, default_value_t = 24)]
         seed_count: usize,
+    },
+    Benchmark {
+        #[arg(long, value_enum, default_value_t = CliBenchmarkMode::FullTraining)]
+        mode: CliBenchmarkMode,
+
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+
+        #[arg(long)]
+        episodes: Option<usize>,
+
+        #[arg(long, default_value_t = 7)]
+        trainer_seed: u64,
+
+        #[arg(long, default_value_t = 2)]
+        seed_start: u64,
+
+        #[arg(long, default_value_t = 24)]
+        seed_count: usize,
+
+        #[arg(long, default_value_t = 2)]
+        random_seed_count: usize,
+
+        #[arg(long, default_value_t = 100)]
+        checkpoint_every: usize,
+
+        #[arg(long, default_value_t = 40.0)]
+        simulated_survival_seconds: f32,
     },
 }
 
@@ -200,6 +246,58 @@ fn main() -> anyhow::Result<()> {
             println!("worst-seed return: {:.2}", summary.min_return);
             println!("avg evades: {:.2}", summary.average_evades);
             println!("timeouts: {}", summary.timeouts);
+        }
+        Command::Benchmark {
+            mode,
+            output_dir,
+            episodes,
+            trainer_seed,
+            seed_start,
+            seed_count,
+            random_seed_count,
+            checkpoint_every,
+            simulated_survival_seconds,
+        } => {
+            let benchmark_mode: BenchmarkMode = mode.into();
+            let output_dir = output_dir.unwrap_or_else(|| match benchmark_mode {
+                BenchmarkMode::FullTraining => {
+                    PathBuf::from("training_runs/benchmarks/dqn2_arena_full_training")
+                }
+                BenchmarkMode::SimulatedSurvival => {
+                    PathBuf::from("training_runs/benchmarks/dqn2_arena_simulated_survival")
+                }
+            });
+            let episodes = episodes.unwrap_or(match benchmark_mode {
+                BenchmarkMode::FullTraining => 160,
+                BenchmarkMode::SimulatedSurvival => 4,
+            });
+            let config = TrainingConfig {
+                model_type: ModelType::Dqn2,
+                episodes,
+                trainer_seed,
+                checkpoint_every,
+                fixed_training_seeds: default_training_seeds(seed_start, seed_count),
+                random_seed_count_per_cycle: random_seed_count,
+                map_design: MapDesign::Arena,
+                ..TrainingConfig::default()
+            };
+            let report = run_benchmark(
+                config,
+                &output_dir,
+                benchmark_mode,
+                simulated_survival_seconds,
+            )?;
+            println!("benchmark mode: {:?}", report.mode);
+            println!("episodes completed: {}", report.episodes_completed);
+            println!("total steps: {}", report.total_steps_completed);
+            println!(
+                "best avg survival: {:.2}s",
+                report.best_metrics.average_survival_time
+            );
+            println!(
+                "report written to {}",
+                report.report_path.display()
+            );
         }
     }
 
