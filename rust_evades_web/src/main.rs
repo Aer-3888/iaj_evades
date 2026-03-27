@@ -647,6 +647,14 @@ async fn start_training(
     State(state): State<Arc<AppState>>,
     Json(req): Json<StartTrainingRequest>,
 ) -> impl IntoResponse {
+    if !req.config.gradient_clip_norm.is_finite() || req.config.gradient_clip_norm < 10.0 {
+        return (
+            ax_ws::http::StatusCode::BAD_REQUEST,
+            "gradient_clip_norm must be a finite number >= 10",
+        )
+            .into_response();
+    }
+
     state.training_history.write().unwrap().clear();
     let mut resume_model = None;
     if let Some(path_str) = &req.resume_model_path {

@@ -508,7 +508,7 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                     label="Gradient Clip Norm" 
                     value={config.gradient_clip_norm} 
                     onChange={v => setConfig({...config, gradient_clip_norm: v})} 
-                    min={100} max={5000} step={10}
+                    min={10} max={5000} step={10}
                   />
                </div>
             </div>
