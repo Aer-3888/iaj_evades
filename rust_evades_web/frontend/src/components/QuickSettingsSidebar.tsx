@@ -4,7 +4,7 @@ import { useSocket } from '../contexts/SocketContext'
 import { useToast } from '../contexts/ToastContext'
 
 interface GameConfig {
-  map_design: "Open" | "Closed";
+  map_design: "Open" | "Closed" | "Arena";
   player_speed: number;
   enemy_speed: number;
   player_radius: number;
@@ -116,12 +116,18 @@ export default function QuickSettingsSidebar() {
         {/* Map Design */}
         <section className="space-y-3">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Environment</label>
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800/50">
+          <div className="grid grid-cols-3 bg-slate-950 p-1 rounded-lg border border-slate-800/50 gap-1">
             <button
               onClick={() => handleUpdate({...config, map_design: "Open"})}
               className={`flex-1 py-1.5 text-xs rounded-md transition font-medium ${config.map_design === "Open" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
             >
               Open
+            </button>
+            <button
+              onClick={() => handleUpdate({...config, map_design: "Arena"})}
+              className={`flex-1 py-1.5 text-xs rounded-md transition font-medium ${config.map_design === "Arena" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+            >
+              Arena
             </button>
             <button
               onClick={() => handleUpdate({...config, map_design: "Closed"})}

@@ -11,6 +11,7 @@ use rust_evades::{
 enum CliMapDesign {
     Open,
     Closed,
+    Arena,
 }
 
 impl From<CliMapDesign> for MapDesign {
@@ -18,6 +19,7 @@ impl From<CliMapDesign> for MapDesign {
         match value {
             CliMapDesign::Open => MapDesign::Open,
             CliMapDesign::Closed => MapDesign::Closed,
+            CliMapDesign::Arena => MapDesign::Arena,
         }
     }
 }

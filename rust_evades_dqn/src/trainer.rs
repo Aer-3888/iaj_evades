@@ -15,7 +15,11 @@ use anyhow::Context;
 use rand::{prelude::*, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rayon::{prelude::*, ThreadPool, ThreadPoolBuilder};
-use rust_evades::{config::GameConfig, game::Action, game::GameState};
+use rust_evades::{
+    config::{GameConfig, MapDesign},
+    game::Action,
+    game::GameState,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
@@ -64,6 +68,12 @@ pub struct TrainingConfig {
     pub epsilon_end: f32,
     pub epsilon_decay_steps: usize,
     pub action_repeat: usize,
+    #[serde(default = "default_training_map_design")]
+    pub map_design: MapDesign,
+}
+
+fn default_training_map_design() -> MapDesign {
+    MapDesign::Open
 }
 
 fn default_huber_delta() -> f32 {
@@ -98,6 +108,7 @@ impl Default for TrainingConfig {
             epsilon_end: 0.03,
             epsilon_decay_steps: 120_000,
             action_repeat: 2,
+            map_design: MapDesign::Open,
         }
     }
 }
@@ -282,12 +293,19 @@ impl ObsBuilderState {
     }
 }
 
+fn env_config_for_training(map_design: MapDesign) -> GameConfig {
+    let mut config = GameConfig::default();
+    config.map_design = map_design;
+    config
+}
+
 impl EvaluationRuntime {
     fn choose(
         network: &Network,
         seeds: &[u64],
         action_repeat: usize,
         model_type: ModelType,
+        map_design: MapDesign,
     ) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -307,13 +325,27 @@ impl EvaluationRuntime {
             .context("failed to build evaluation thread pool")?;
 
         let sequential_benchmark = benchmark_evaluation(
-            || evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type),
+            || {
+                evaluate_seed_batch_sequential(
+                    network,
+                    seeds,
+                    action_repeat,
+                    model_type,
+                    map_design,
+                )
+            },
             2,
         );
         let parallel_benchmark = benchmark_evaluation(
             || {
                 pool.install(|| {
-                    evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)
+                    evaluate_seed_batch_parallel(
+                        network,
+                        seeds,
+                        action_repeat,
+                        model_type,
+                        map_design,
+                    )
                 })
             },
             2,
@@ -340,13 +372,18 @@ impl EvaluationRuntime {
         seeds: &[u64],
         action_repeat: usize,
         model_type: ModelType,
+        map_design: MapDesign,
     ) -> Vec<SeedEpisodeSummary> {
         match self {
-            Self::Sequential => {
-                evaluate_seed_batch_sequential(network, seeds, action_repeat, model_type)
-            }
+            Self::Sequential => evaluate_seed_batch_sequential(
+                network,
+                seeds,
+                action_repeat,
+                model_type,
+                map_design,
+            ),
             Self::Parallel { pool } => pool.install(|| {
-                evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type)
+                evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type, map_design)
             }),
         }
     }
@@ -585,6 +622,7 @@ pub fn train(
         &config.fixed_training_seeds,
         config.action_repeat,
         config.model_type,
+        config.map_design,
     )?;
     profile_stats.evaluation_runtime_choice += eval_runtime_start.elapsed();
 
@@ -631,7 +669,7 @@ pub fn train(
         let seed = episode_schedule[cycle_index];
         cycle_index += 1;
 
-        let mut env = GameState::new(GameConfig::default(), Some(seed));
+        let mut env = GameState::new(env_config_for_training(config.map_design), Some(seed));
         let mut observation = ObsBuilderState::new(config.model_type);
         observation.reset(&env);
         let mut current_state = observation.build_vec(&env);
@@ -721,6 +759,7 @@ pub fn train(
             config.action_repeat,
             &evaluation_runtime,
             config.model_type,
+            config.map_design,
         );
         focus_training_seeds = match config.seed_focus_mode {
             SeedFocusMode::Original => Vec::new(),
@@ -878,6 +917,7 @@ pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSumm
         model.action_repeat,
         &EvaluationRuntime::Sequential,
         model_type,
+        MapDesign::Open,
     )
     .summary
 }
@@ -1090,8 +1130,10 @@ fn evaluate_network_with_results(
     action_repeat: usize,
     runtime: &EvaluationRuntime,
     model_type: ModelType,
+    map_design: MapDesign,
 ) -> EvaluationOutcome {
-    let seed_results = runtime.evaluate_batch(network, seeds, action_repeat, model_type);
+    let seed_results =
+        runtime.evaluate_batch(network, seeds, action_repeat, model_type, map_design);
     let summary = aggregate_seed_results(&seed_results);
     EvaluationOutcome {
         summary,
@@ -1161,10 +1203,11 @@ fn evaluate_seed_batch_sequential(
     seeds: &[u64],
     action_repeat: usize,
     model_type: ModelType,
+    map_design: MapDesign,
 ) -> Vec<SeedEpisodeSummary> {
     seeds
         .iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
+        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type, map_design))
         .collect()
 }
 
@@ -1173,10 +1216,11 @@ fn evaluate_seed_batch_parallel(
     seeds: &[u64],
     action_repeat: usize,
     model_type: ModelType,
+    map_design: MapDesign,
 ) -> Vec<SeedEpisodeSummary> {
     seeds
         .par_iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type))
+        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type, map_design))
         .collect()
 }
 
@@ -1185,8 +1229,9 @@ fn evaluate_seed(
     seed: u64,
     action_repeat: usize,
     model_type: ModelType,
+    map_design: MapDesign,
 ) -> SeedEpisodeSummary {
-    let mut env = GameState::new(GameConfig::default(), Some(seed));
+    let mut env = GameState::new(env_config_for_training(map_design), Some(seed));
     let mut observation = ObsBuilderState::new(model_type);
     observation.reset(&env);
     let mut episode_return = 0.0;

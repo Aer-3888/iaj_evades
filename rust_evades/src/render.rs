@@ -6,8 +6,8 @@ use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 
 use crate::{
     config::{Color, GameConfig, MapDesign},
-    headless::ControllerMode,
     game::{Action, DoneReason, GameState, Vec2},
+    headless::ControllerMode,
     model_player::ModelController,
 };
 
@@ -83,7 +83,12 @@ pub fn run_window(
             accumulator -= timestep;
 
             if state.done {
-                if model_enabled || matches!(state.done_reason, DoneReason::Collision | DoneReason::Timeout) {
+                if model_enabled
+                    || matches!(
+                        state.done_reason,
+                        DoneReason::Collision | DoneReason::Timeout
+                    )
+                {
                     state.reset(None);
                     if let Some(controller) = &mut model {
                         controller.reset(&state);
@@ -149,16 +154,18 @@ fn keyboard_action(window: &Window) -> Action {
 }
 
 fn camera_for_player(state: &GameState, config: &GameConfig) -> Vec2 {
-    if config.map_design == MapDesign::Open {
-        Vec2 {
+    match config.map_design {
+        MapDesign::Open | MapDesign::Arena => Vec2 {
             x: state.player.body.pos.x - config.screen_width as f32 * 0.5,
             y: state.player.body.pos.y - config.screen_height as f32 * 0.5,
-        }
-    } else {
-        let target = state.player.body.pos.x - config.screen_width as f32 * 0.35 + config.camera_lead;
-        Vec2 {
-            x: target.clamp(0.0, config.world_width - config.screen_width as f32),
-            y: 0.0,
+        },
+        MapDesign::Closed => {
+            let target =
+                state.player.body.pos.x - config.screen_width as f32 * 0.35 + config.camera_lead;
+            Vec2 {
+                x: target.clamp(0.0, config.world_width - config.screen_width as f32),
+                y: 0.0,
+            }
         }
     }
 }
@@ -174,8 +181,8 @@ fn draw_world(
     displayed_fps: f32,
 ) {
     fill(buffer, config.background_color.to_u32());
-    
-    if config.map_design == MapDesign::Open {
+
+    if matches!(config.map_design, MapDesign::Open | MapDesign::Arena) {
         draw_grid(buffer, config, camera);
     } else {
         // Draw Closed map (corridor)
@@ -213,7 +220,8 @@ fn draw_world(
         let marker_spacing = 180;
         let marker_width = 70;
         let marker_height = 8;
-        let marker_y = config.corridor_top as i32 + config.corridor_height() as i32 / 2 - marker_height / 2;
+        let marker_y =
+            config.corridor_top as i32 + config.corridor_height() as i32 / 2 - marker_height / 2;
         let first_marker = ((camera.x as i32 / marker_spacing) * marker_spacing) - marker_spacing;
         let end_marker = camera.x as i32 + config.screen_width as i32 + marker_spacing;
         let mut world_x = first_marker;
@@ -275,7 +283,7 @@ fn draw_world(
         config.player_color.to_u32(),
     );
 
-    if config.map_design == MapDesign::Open {
+    if matches!(config.map_design, MapDesign::Open | MapDesign::Arena) {
         draw_text(
             buffer,
             config,
@@ -392,12 +400,12 @@ fn draw_world(
         let message = match state.done_reason {
             DoneReason::Collision => "HIT - PRESS R TO TRY AGAIN",
             DoneReason::Timeout => {
-                if config.map_design == MapDesign::Open {
+                if matches!(config.map_design, MapDesign::Open | MapDesign::Arena) {
                     "SURVIVED FULL TIMER - PRESS R TO RUN AGAIN"
                 } else {
                     "TIMEOUT - PRESS R TO TRY AGAIN"
                 }
-            },
+            }
             DoneReason::Goal => "GOAL REACHED - PRESS R TO RUN AGAIN",
             DoneReason::None => "",
         };

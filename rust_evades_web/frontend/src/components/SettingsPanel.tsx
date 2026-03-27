@@ -4,7 +4,7 @@ import ModelSelector from './ModelSelector'
 import { useToast } from '../contexts/ToastContext'
 
 interface GameConfig {
-  map_design: "Open" | "Closed";
+  map_design: "Open" | "Closed" | "Arena";
   player_speed: number;
   enemy_speed: number;
   player_radius: number;
@@ -94,6 +94,12 @@ export default function SettingsPanel() {
                     className={`px-4 py-2 rounded-lg text-sm transition font-medium ${config.map_design === "Open" ? "bg-blue-600 text-white shadow-md shadow-blue-900/30" : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"}`}
                   >
                     Open (Infinite)
+                  </button>
+                  <button
+                    onClick={() => setConfig({...config, map_design: "Arena"})}
+                    className={`px-4 py-2 rounded-lg text-sm transition font-medium ${config.map_design === "Arena" ? "bg-blue-600 text-white shadow-md shadow-blue-900/30" : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"}`}
+                  >
+                    Arena (Open)
                   </button>
                   <button
                     onClick={() => setConfig({...config, map_design: "Closed"})}
