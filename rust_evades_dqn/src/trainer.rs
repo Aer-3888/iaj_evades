@@ -2,7 +2,7 @@ use std::{
     cmp::Ordering,
     collections::VecDeque,
     env, fs,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering as AtomicOrdering},
         Arc,
@@ -119,6 +119,31 @@ pub struct TrainingResult {
     pub completed_episodes: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkMode {
+    FullTraining,
+    SimulatedSurvival,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ExecutionMode {
+    RealGame,
+    SimulatedSurvival { survival_time: f32 },
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct BenchmarkReport {
+    pub mode: BenchmarkMode,
+    pub output_dir: PathBuf,
+    pub report_path: PathBuf,
+    pub simulated_survival_seconds: f32,
+    pub episodes_completed: usize,
+    pub total_steps_completed: usize,
+    pub best_metrics: EvaluationSummary,
+    pub profile: ProfileSnapshot,
+}
+
 #[derive(Clone, Debug)]
 struct ResumeState {
     network: Network,
@@ -180,15 +205,19 @@ struct SeedEpisodeSummary {
 }
 
 #[derive(Clone, Debug, Default)]
-struct ProfileStats {
+pub struct ProfileStats {
     total_wall: Duration,
     evaluation_runtime_choice: Duration,
     optimization_runtime_choice: Duration,
     environment_and_policy: Duration,
+    action_selection: Duration,
+    environment_step: Duration,
+    observation_build: Duration,
     optimization: Duration,
     evaluation: Duration,
     serialization: Duration,
     replay_sampling: Duration,
+    diagnostics: Duration,
     train_batch: Duration,
     target_sync: Duration,
     steps: usize,
@@ -211,6 +240,21 @@ impl ProfileStats {
             "  optimization: {:.3}s ({:.1}%)",
             self.optimization.as_secs_f64(),
             self.optimization.as_secs_f64() * 100.0 / total
+        );
+        println!(
+            "  action selection: {:.3}s ({:.1}%)",
+            self.action_selection.as_secs_f64(),
+            self.action_selection.as_secs_f64() * 100.0 / total
+        );
+        println!(
+            "  environment step: {:.3}s ({:.1}%)",
+            self.environment_step.as_secs_f64(),
+            self.environment_step.as_secs_f64() * 100.0 / total
+        );
+        println!(
+            "  observation build: {:.3}s ({:.1}%)",
+            self.observation_build.as_secs_f64(),
+            self.observation_build.as_secs_f64() * 100.0 / total
         );
         println!(
             "  evaluation: {:.3}s ({:.1}%)",
@@ -238,6 +282,11 @@ impl ProfileStats {
             self.replay_sampling.as_secs_f64() * 100.0 / total
         );
         println!(
+            "  batch diagnostics: {:.3}s ({:.1}%)",
+            self.diagnostics.as_secs_f64(),
+            self.diagnostics.as_secs_f64() * 100.0 / total
+        );
+        println!(
             "  train batch core: {:.3}s ({:.1}%)",
             self.train_batch.as_secs_f64(),
             self.train_batch.as_secs_f64() * 100.0 / total
@@ -251,6 +300,137 @@ impl ProfileStats {
             "  steps: {}  train_updates: {}  evals: {}  saves: {}",
             self.steps, self.train_updates, self.evaluations, self.saves
         );
+    }
+
+    fn snapshot(&self) -> ProfileSnapshot {
+        ProfileSnapshot {
+            total_wall_seconds: self.total_wall.as_secs_f64(),
+            evaluation_runtime_choice_seconds: self.evaluation_runtime_choice.as_secs_f64(),
+            optimization_runtime_choice_seconds: self.optimization_runtime_choice.as_secs_f64(),
+            environment_and_policy_seconds: self.environment_and_policy.as_secs_f64(),
+            action_selection_seconds: self.action_selection.as_secs_f64(),
+            environment_step_seconds: self.environment_step.as_secs_f64(),
+            observation_build_seconds: self.observation_build.as_secs_f64(),
+            optimization_seconds: self.optimization.as_secs_f64(),
+            evaluation_seconds: self.evaluation.as_secs_f64(),
+            serialization_seconds: self.serialization.as_secs_f64(),
+            replay_sampling_seconds: self.replay_sampling.as_secs_f64(),
+            diagnostics_seconds: self.diagnostics.as_secs_f64(),
+            train_batch_seconds: self.train_batch.as_secs_f64(),
+            target_sync_seconds: self.target_sync.as_secs_f64(),
+            steps: self.steps,
+            train_updates: self.train_updates,
+            evaluations: self.evaluations,
+            saves: self.saves,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ProfileSnapshot {
+    pub total_wall_seconds: f64,
+    pub evaluation_runtime_choice_seconds: f64,
+    pub optimization_runtime_choice_seconds: f64,
+    pub environment_and_policy_seconds: f64,
+    pub action_selection_seconds: f64,
+    pub environment_step_seconds: f64,
+    pub observation_build_seconds: f64,
+    pub optimization_seconds: f64,
+    pub evaluation_seconds: f64,
+    pub serialization_seconds: f64,
+    pub replay_sampling_seconds: f64,
+    pub diagnostics_seconds: f64,
+    pub train_batch_seconds: f64,
+    pub target_sync_seconds: f64,
+    pub steps: usize,
+    pub train_updates: usize,
+    pub evaluations: usize,
+    pub saves: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct StepDiagnostics {
+    mean_predicted_q: f32,
+    mean_target_q: f32,
+    mean_abs_td_error: f32,
+    terminal_fraction: f32,
+}
+
+#[derive(Clone, Debug, Default)]
+struct EpisodeLoopMetrics {
+    total_return: f32,
+    survival_time: f32,
+    evades: u32,
+    losses: Vec<f32>,
+    diagnostics: StepDiagnostics,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SyntheticStepResult {
+    reward: f32,
+    done: bool,
+    elapsed_time: f32,
+}
+
+#[derive(Clone, Debug)]
+struct SyntheticEpisode {
+    config: GameConfig,
+    total_steps: usize,
+    step_index: usize,
+    elapsed_time: f32,
+    total_return: f32,
+    current_state: Vec<f32>,
+}
+
+impl SyntheticEpisode {
+    fn new(
+        config: GameConfig,
+        seed: u64,
+        model_type: ModelType,
+        survival_time: f32,
+        action_repeat: usize,
+    ) -> Self {
+        let total_steps = synthetic_total_steps(&config, survival_time, action_repeat);
+        let current_state = synthetic_observation(seed, 0, Action::Idle, model_type.input_size());
+        Self {
+            config,
+            total_steps,
+            step_index: 0,
+            elapsed_time: 0.0,
+            total_return: 0.0,
+            current_state,
+        }
+    }
+
+    fn current_state(&self) -> &[f32] {
+        &self.current_state
+    }
+
+    fn step(
+        &mut self,
+        seed: u64,
+        action: Action,
+        action_repeat: usize,
+        input_size: usize,
+    ) -> SyntheticStepResult {
+        let delta = self.config.fixed_timestep * action_repeat.max(1) as f32;
+        self.step_index += 1;
+        self.elapsed_time = (self.step_index as f32 * delta).min(self.config.max_episode_time);
+
+        let mut reward = self.config.survival_reward_per_second * delta;
+        let done = self.step_index >= self.total_steps;
+        if done {
+            reward += self.config.timeout_bonus;
+        }
+
+        self.total_return += reward;
+        self.current_state = synthetic_observation(seed, self.step_index, action, input_size);
+
+        SyntheticStepResult {
+            reward,
+            done,
+            elapsed_time: self.elapsed_time,
+        }
     }
 }
 
@@ -306,6 +486,7 @@ impl EvaluationRuntime {
         action_repeat: usize,
         model_type: ModelType,
         map_design: MapDesign,
+        execution_mode: ExecutionMode,
     ) -> anyhow::Result<Self> {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -332,6 +513,7 @@ impl EvaluationRuntime {
                     action_repeat,
                     model_type,
                     map_design,
+                    execution_mode,
                 )
             },
             2,
@@ -345,6 +527,7 @@ impl EvaluationRuntime {
                         action_repeat,
                         model_type,
                         map_design,
+                        execution_mode,
                     )
                 })
             },
@@ -373,6 +556,7 @@ impl EvaluationRuntime {
         action_repeat: usize,
         model_type: ModelType,
         map_design: MapDesign,
+        execution_mode: ExecutionMode,
     ) -> Vec<SeedEpisodeSummary> {
         match self {
             Self::Sequential => evaluate_seed_batch_sequential(
@@ -381,9 +565,17 @@ impl EvaluationRuntime {
                 action_repeat,
                 model_type,
                 map_design,
+                execution_mode,
             ),
             Self::Parallel { pool } => pool.install(|| {
-                evaluate_seed_batch_parallel(network, seeds, action_repeat, model_type, map_design)
+                evaluate_seed_batch_parallel(
+                    network,
+                    seeds,
+                    action_repeat,
+                    model_type,
+                    map_design,
+                    execution_mode,
+                )
             }),
         }
     }
@@ -417,7 +609,13 @@ impl OptimizationRuntime {
             .build()
             .context("failed to build optimizer thread pool")?;
         let benchmark_batch = build_optimizer_benchmark_batch(batch_size, input_size);
-        let chunk_size = benchmark_batch.len().div_ceil(desired_threads * 2).max(1);
+        let mut chunk_size_candidates = vec![
+            benchmark_batch.len().div_ceil(desired_threads * 2).max(1),
+            benchmark_batch.len().div_ceil(desired_threads).max(1),
+            benchmark_batch.len().div_ceil(desired_threads.saturating_sub(1).max(1)).max(1),
+        ];
+        chunk_size_candidates.sort_unstable();
+        chunk_size_candidates.dedup();
 
         let sequential_benchmark = benchmark_runtime(
             || {
@@ -433,28 +631,39 @@ impl OptimizationRuntime {
             },
             2,
         );
-        let parallel_benchmark = benchmark_runtime(
-            || {
-                let mut online = network.clone();
-                pool.install(|| {
-                    let _ = online.train_batch_parallel(
-                        target_network,
-                        &benchmark_batch,
-                        gamma,
-                        learning_rate,
-                        huber_delta,
-                        gradient_clip_norm,
-                        chunk_size,
-                    );
-                });
-            },
-            2,
-        );
+        let mut best_parallel = None;
+        for chunk_size in chunk_size_candidates {
+            let parallel_benchmark = benchmark_runtime(
+                || {
+                    let mut online = network.clone();
+                    pool.install(|| {
+                        let _ = online.train_batch_parallel(
+                            target_network,
+                            &benchmark_batch,
+                            gamma,
+                            learning_rate,
+                            huber_delta,
+                            gradient_clip_norm,
+                            chunk_size,
+                        );
+                    });
+                },
+                2,
+            );
+            if best_parallel
+                .map(|(best_duration, _)| parallel_benchmark < best_duration)
+                .unwrap_or(true)
+            {
+                best_parallel = Some((parallel_benchmark, chunk_size));
+            }
+        }
+        let (parallel_benchmark, chunk_size) =
+            best_parallel.expect("chunk size candidates must not be empty");
 
         if parallel_benchmark < sequential_benchmark {
             println!(
-                "optimizer mode: parallel with {} threads (seq {:?}, par {:?})",
-                desired_threads, sequential_benchmark, parallel_benchmark
+                "optimizer mode: parallel with {} threads and chunk size {} (seq {:?}, par {:?})",
+                desired_threads, chunk_size, sequential_benchmark, parallel_benchmark
             );
             Ok(Self::Parallel { pool, chunk_size })
         } else {
@@ -573,6 +782,56 @@ fn batch_diagnostics(
     )
 }
 
+struct TrainExecutionOutcome {
+    result: TrainingResult,
+    profile_stats: ProfileStats,
+    total_steps_completed: usize,
+}
+
+fn profile_enabled_from_env() -> bool {
+    env::var("DQN_PROFILE")
+        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(false)
+}
+
+pub fn run_benchmark(
+    config: TrainingConfig,
+    output_dir: &Path,
+    mode: BenchmarkMode,
+    simulated_survival_seconds: f32,
+) -> anyhow::Result<BenchmarkReport> {
+    let execution_mode = match mode {
+        BenchmarkMode::FullTraining => ExecutionMode::RealGame,
+        BenchmarkMode::SimulatedSurvival => ExecutionMode::SimulatedSurvival {
+            survival_time: simulated_survival_seconds,
+        },
+    };
+    let outcome = train_internal(
+        config,
+        output_dir,
+        None,
+        None,
+        None,
+        execution_mode,
+        true,
+    )?;
+    let report_path = output_dir.join("benchmark_report.json");
+    let report = BenchmarkReport {
+        mode,
+        output_dir: output_dir.to_path_buf(),
+        report_path: report_path.clone(),
+        simulated_survival_seconds,
+        episodes_completed: outcome.result.completed_episodes,
+        total_steps_completed: outcome.total_steps_completed,
+        best_metrics: outcome.result.best_metrics,
+        profile: outcome.profile_stats.snapshot(),
+    };
+    let json = serde_json::to_string_pretty(&report).context("failed to serialize benchmark")?;
+    fs::write(&report_path, json)
+        .with_context(|| format!("failed to write {}", report_path.display()))?;
+    Ok(report)
+}
+
 pub fn train(
     config: TrainingConfig,
     output_dir: &Path,
@@ -580,9 +839,27 @@ pub fn train(
     progress_tx: Option<mpsc::UnboundedSender<TrainingProgress>>,
     stop_signal: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<TrainingResult> {
-    let profile_enabled = env::var("DQN_PROFILE")
-        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-        .unwrap_or(false);
+    Ok(train_internal(
+        config,
+        output_dir,
+        resume_model,
+        progress_tx,
+        stop_signal,
+        ExecutionMode::RealGame,
+        profile_enabled_from_env(),
+    )?
+    .result)
+}
+
+fn train_internal(
+    config: TrainingConfig,
+    output_dir: &Path,
+    resume_model: Option<SavedModel>,
+    progress_tx: Option<mpsc::UnboundedSender<TrainingProgress>>,
+    stop_signal: Option<Arc<AtomicBool>>,
+    execution_mode: ExecutionMode,
+    profile_enabled: bool,
+) -> anyhow::Result<TrainExecutionOutcome> {
     let total_wall_start = Instant::now();
     let mut profile_stats = ProfileStats::default();
 
@@ -604,6 +881,7 @@ pub fn train(
     };
     let mut target = online.clone();
     let mut replay = ReplayBuffer::new(config.replay_capacity);
+
     let optimizer_runtime_start = Instant::now();
     let optimization_runtime = OptimizationRuntime::choose(
         &online,
@@ -616,6 +894,7 @@ pub fn train(
         input_size,
     )?;
     profile_stats.optimization_runtime_choice += optimizer_runtime_start.elapsed();
+
     let eval_runtime_start = Instant::now();
     let evaluation_runtime = EvaluationRuntime::choose(
         &online,
@@ -623,6 +902,7 @@ pub fn train(
         config.action_repeat,
         config.model_type,
         config.map_design,
+        execution_mode,
     )?;
     profile_stats.evaluation_runtime_choice += eval_runtime_start.elapsed();
 
@@ -645,6 +925,7 @@ pub fn train(
 
     let mut last_progress_time = Instant::now();
     let mut last_progress_steps = total_steps;
+    let collect_diagnostics = progress_tx.is_some();
 
     for episode in 0..config.episodes {
         if let Some(stop) = &stop_signal {
@@ -669,88 +950,20 @@ pub fn train(
         let seed = episode_schedule[cycle_index];
         cycle_index += 1;
 
-        let mut env = GameState::new(env_config_for_training(config.map_design), Some(seed));
-        let mut observation = ObsBuilderState::new(config.model_type);
-        observation.reset(&env);
-        let mut current_state = observation.build_vec(&env);
-        let mut episode_return = 0.0;
-        let mut episode_evades = 0u32;
-        let mut losses = Vec::new();
-        let mut mean_predicted_q = 0.0;
-        let mut mean_target_q = 0.0;
-        let mut mean_abs_td_error = 0.0;
-        let mut terminal_fraction = 0.0;
-
-        while !env.done {
-            let env_policy_start = Instant::now();
-            let state = current_state.clone();
-            let epsilon = epsilon_for_step(&config, total_steps);
-            let action_index = select_action(&online, &state, epsilon, &mut rng);
-            let action = Action::ALL[action_index];
-
-            let mut reward = 0.0;
-            for _ in 0..config.action_repeat {
-                if env.done {
-                    break;
-                }
-                let result = env.step_fixed(action);
-                reward += result.reward;
-            }
-
-            let next_state = observation.build_vec(&env);
-            current_state = next_state.clone();
-            profile_stats.environment_and_policy += env_policy_start.elapsed();
-            let done = env.done;
-            episode_return += reward;
-            episode_evades = env.enemies_evaded;
-            global_best_survival = global_best_survival.max(env.elapsed_time);
-            replay.push(Transition {
-                state,
-                action: action_index,
-                reward,
-                next_state,
-                done,
-            });
-            total_steps += 1;
-            profile_stats.steps += 1;
-
-            if replay.len() >= config.warmup_steps && total_steps % config.train_every == 0 {
-                let optimize_start = Instant::now();
-                let sample_start = Instant::now();
-                let batch_refs = replay.sample(config.batch_size.min(replay.len()), &mut rng);
-                profile_stats.replay_sampling += sample_start.elapsed();
-                let batch = batch_refs.into_iter().cloned().collect::<Vec<_>>();
-                let train_start = Instant::now();
-                (
-                    mean_predicted_q,
-                    mean_target_q,
-                    mean_abs_td_error,
-                    terminal_fraction,
-                ) = batch_diagnostics(&online, &target, &batch, config.gamma);
-                let loss = optimization_runtime.train_batch(
-                    &mut online,
-                    &target,
-                    &batch,
-                    config.gamma,
-                    config.learning_rate,
-                    config.huber_delta,
-                    config.gradient_clip_norm,
-                );
-                profile_stats.train_batch += train_start.elapsed();
-                profile_stats.optimization += optimize_start.elapsed();
-                profile_stats.train_updates += 1;
-                losses.push(loss);
-            }
-
-            if replay.len() >= config.warmup_steps && total_steps % config.target_sync_interval == 0
-            {
-                let sync_start = Instant::now();
-                target = online.clone();
-                let sync_elapsed = sync_start.elapsed();
-                profile_stats.target_sync += sync_elapsed;
-                profile_stats.optimization += sync_elapsed;
-            }
-        }
+        let metrics = run_training_episode(
+            execution_mode,
+            &config,
+            seed,
+            &mut rng,
+            &mut online,
+            &mut target,
+            &mut replay,
+            &optimization_runtime,
+            &mut total_steps,
+            &mut global_best_survival,
+            &mut profile_stats,
+            collect_diagnostics,
+        );
 
         let eval_start = Instant::now();
         let eval = evaluate_network_with_results(
@@ -760,6 +973,7 @@ pub fn train(
             &evaluation_runtime,
             config.model_type,
             config.map_design,
+            execution_mode,
         );
         focus_training_seeds = match config.seed_focus_mode {
             SeedFocusMode::Original => Vec::new(),
@@ -769,6 +983,7 @@ pub fn train(
         };
         profile_stats.evaluation += eval_start.elapsed();
         profile_stats.evaluations += 1;
+
         if is_better_metrics(&eval.summary, &best_metrics, config.seed_focus_mode) {
             best_metrics = eval.summary.clone();
             let save_start = Instant::now();
@@ -790,10 +1005,10 @@ pub fn train(
             profile_stats.saves += 1;
         }
 
-        let mean_loss = if losses.is_empty() {
+        let mean_loss = if metrics.losses.is_empty() {
             0.0
         } else {
-            losses.iter().sum::<f32>() / losses.len() as f32
+            metrics.losses.iter().sum::<f32>() / metrics.losses.len() as f32
         };
         println!(
             "ep {:>5}  seed {:>10}  steps {:>7}  eps {:>4.2}  return {:>7.2}  survive {:>5.2}s  evades {:>4}  eval_to {:>2}/{}  eval_min {:>5.2}s  loss {:>7.4}",
@@ -801,9 +1016,9 @@ pub fn train(
             seed,
             total_steps,
             epsilon_for_step(&config, total_steps),
-            episode_return,
-            env.elapsed_time,
-            episode_evades,
+            metrics.total_return,
+            metrics.survival_time,
+            metrics.evades,
             eval.summary.timeouts,
             config.fixed_training_seeds.len(),
             eval.summary.min_survival_time,
@@ -827,9 +1042,9 @@ pub fn train(
                 episode: starting_episode + episode + 1,
                 total_steps,
                 epsilon: epsilon_for_step(&config, total_steps),
-                last_return: episode_return,
-                last_survival: env.elapsed_time,
-                last_evades: episode_evades,
+                last_return: metrics.total_return,
+                last_survival: metrics.survival_time,
+                last_evades: metrics.evades,
                 avg_survival: eval.summary.average_survival_time,
                 global_best_survival,
                 min_survival: eval.summary.min_survival_time,
@@ -839,10 +1054,10 @@ pub fn train(
                 timeouts: eval.summary.timeouts,
                 loss: mean_loss,
                 steps_per_second: sps,
-                mean_predicted_q,
-                mean_target_q,
-                mean_abs_td_error,
-                terminal_fraction,
+                mean_predicted_q: metrics.diagnostics.mean_predicted_q,
+                mean_target_q: metrics.diagnostics.mean_target_q,
+                mean_abs_td_error: metrics.diagnostics.mean_abs_td_error,
+                terminal_fraction: metrics.diagnostics.terminal_fraction,
             });
         }
 
@@ -867,8 +1082,6 @@ pub fn train(
                 )),
                 saved_model.clone(),
             )?;
-
-            // Also save as 'latest_model.json' for easier dashboard reference
             let _ = save_model(output_dir.join("latest_model.json"), saved_model);
 
             profile_stats.serialization += save_start.elapsed();
@@ -876,6 +1089,7 @@ pub fn train(
         }
     }
 
+    let completed_episodes = starting_episode + config.episodes;
     let final_save_start = Instant::now();
     save_model(
         output_dir.join("final_model.json"),
@@ -885,7 +1099,7 @@ pub fn train(
             config.fixed_training_seeds.clone(),
             config.random_seed_count_per_cycle,
             config.action_repeat,
-            starting_episode + config.episodes,
+            completed_episodes,
             total_steps,
             best_metrics.clone(),
             online.layers.clone(),
@@ -899,10 +1113,271 @@ pub fn train(
         profile_stats.print();
     }
 
-    Ok(TrainingResult {
-        best_metrics,
-        completed_episodes: starting_episode + config.episodes,
+    Ok(TrainExecutionOutcome {
+        result: TrainingResult {
+            best_metrics,
+            completed_episodes,
+        },
+        profile_stats,
+        total_steps_completed: total_steps,
     })
+}
+
+fn run_training_episode(
+    execution_mode: ExecutionMode,
+    config: &TrainingConfig,
+    seed: u64,
+    rng: &mut ChaCha8Rng,
+    online: &mut Network,
+    target: &mut Network,
+    replay: &mut ReplayBuffer,
+    optimization_runtime: &OptimizationRuntime,
+    total_steps: &mut usize,
+    global_best_survival: &mut f32,
+    profile_stats: &mut ProfileStats,
+    collect_diagnostics: bool,
+) -> EpisodeLoopMetrics {
+    match execution_mode {
+        ExecutionMode::RealGame => run_real_training_episode(
+            config,
+            seed,
+            rng,
+            online,
+            target,
+            replay,
+            optimization_runtime,
+            total_steps,
+            global_best_survival,
+            profile_stats,
+            collect_diagnostics,
+        ),
+        ExecutionMode::SimulatedSurvival { survival_time } => run_simulated_training_episode(
+            config,
+            seed,
+            survival_time,
+            rng,
+            online,
+            target,
+            replay,
+            optimization_runtime,
+            total_steps,
+            global_best_survival,
+            profile_stats,
+            collect_diagnostics,
+        ),
+    }
+}
+
+fn run_real_training_episode(
+    config: &TrainingConfig,
+    seed: u64,
+    rng: &mut ChaCha8Rng,
+    online: &mut Network,
+    target: &mut Network,
+    replay: &mut ReplayBuffer,
+    optimization_runtime: &OptimizationRuntime,
+    total_steps: &mut usize,
+    global_best_survival: &mut f32,
+    profile_stats: &mut ProfileStats,
+    collect_diagnostics: bool,
+) -> EpisodeLoopMetrics {
+    let mut env = GameState::new(env_config_for_training(config.map_design), Some(seed));
+    let mut observation = ObsBuilderState::new(config.model_type);
+    observation.reset(&env);
+    let mut current_state = observation.build_vec(&env);
+    let mut metrics = EpisodeLoopMetrics::default();
+
+    while !env.done {
+        let env_policy_start = Instant::now();
+        let state = current_state.clone();
+        let action_start = Instant::now();
+        let epsilon = epsilon_for_step(config, *total_steps);
+        let action_index = select_action(online, &state, epsilon, rng);
+        let action = Action::ALL[action_index];
+        profile_stats.action_selection += action_start.elapsed();
+
+        let env_step_start = Instant::now();
+        let mut reward = 0.0;
+        for _ in 0..config.action_repeat {
+            if env.done {
+                break;
+            }
+            let result = env.step_fixed(action);
+            reward += result.reward;
+        }
+        profile_stats.environment_step += env_step_start.elapsed();
+
+        let observation_start = Instant::now();
+        let next_state = observation.build_vec(&env);
+        profile_stats.observation_build += observation_start.elapsed();
+        current_state = next_state.clone();
+        profile_stats.environment_and_policy += env_policy_start.elapsed();
+
+        metrics.total_return += reward;
+        metrics.evades = env.enemies_evaded;
+        metrics.survival_time = env.elapsed_time;
+        *global_best_survival = (*global_best_survival).max(env.elapsed_time);
+
+        process_transition(
+            config,
+            replay,
+            state,
+            action_index,
+            reward,
+            next_state,
+            env.done,
+            online,
+            target,
+            optimization_runtime,
+            rng,
+            total_steps,
+            profile_stats,
+            &mut metrics,
+            collect_diagnostics,
+        );
+    }
+
+    metrics
+}
+
+fn run_simulated_training_episode(
+    config: &TrainingConfig,
+    seed: u64,
+    survival_time: f32,
+    rng: &mut ChaCha8Rng,
+    online: &mut Network,
+    target: &mut Network,
+    replay: &mut ReplayBuffer,
+    optimization_runtime: &OptimizationRuntime,
+    total_steps: &mut usize,
+    global_best_survival: &mut f32,
+    profile_stats: &mut ProfileStats,
+    collect_diagnostics: bool,
+) -> EpisodeLoopMetrics {
+    let mut synthetic = SyntheticEpisode::new(
+        env_config_for_training(config.map_design),
+        seed,
+        config.model_type,
+        survival_time,
+        config.action_repeat,
+    );
+    let mut metrics = EpisodeLoopMetrics::default();
+
+    loop {
+        let env_policy_start = Instant::now();
+        let state = synthetic.current_state().to_vec();
+        let action_start = Instant::now();
+        let epsilon = epsilon_for_step(config, *total_steps);
+        let action_index = select_action(online, &state, epsilon, rng);
+        let action = Action::ALL[action_index];
+        profile_stats.action_selection += action_start.elapsed();
+        let env_step_start = Instant::now();
+        let step = synthetic.step(seed, action, config.action_repeat, config.model_type.input_size());
+        profile_stats.environment_step += env_step_start.elapsed();
+        let observation_start = Instant::now();
+        let next_state = synthetic.current_state().to_vec();
+        profile_stats.observation_build += observation_start.elapsed();
+        profile_stats.environment_and_policy += env_policy_start.elapsed();
+
+        metrics.total_return += step.reward;
+        metrics.survival_time = step.elapsed_time;
+        *global_best_survival = (*global_best_survival).max(step.elapsed_time);
+
+        process_transition(
+            config,
+            replay,
+            state,
+            action_index,
+            step.reward,
+            next_state,
+            step.done,
+            online,
+            target,
+            optimization_runtime,
+            rng,
+            total_steps,
+            profile_stats,
+            &mut metrics,
+            collect_diagnostics,
+        );
+
+        if step.done {
+            break;
+        }
+    }
+
+    metrics
+}
+
+#[allow(clippy::too_many_arguments)]
+fn process_transition(
+    config: &TrainingConfig,
+    replay: &mut ReplayBuffer,
+    state: Vec<f32>,
+    action_index: usize,
+    reward: f32,
+    next_state: Vec<f32>,
+    done: bool,
+    online: &mut Network,
+    target: &mut Network,
+    optimization_runtime: &OptimizationRuntime,
+    rng: &mut ChaCha8Rng,
+    total_steps: &mut usize,
+    profile_stats: &mut ProfileStats,
+    metrics: &mut EpisodeLoopMetrics,
+    collect_diagnostics: bool,
+) {
+    replay.push(Transition {
+        state,
+        action: action_index,
+        reward,
+        next_state,
+        done,
+    });
+    *total_steps += 1;
+    profile_stats.steps += 1;
+
+    if replay.len() >= config.warmup_steps && *total_steps % config.train_every == 0 {
+        let optimize_start = Instant::now();
+        let sample_start = Instant::now();
+        let batch_refs = replay.sample(config.batch_size.min(replay.len()), rng);
+        profile_stats.replay_sampling += sample_start.elapsed();
+        let batch = batch_refs.into_iter().cloned().collect::<Vec<_>>();
+        if collect_diagnostics {
+            let diagnostics_start = Instant::now();
+            let (mean_predicted_q, mean_target_q, mean_abs_td_error, terminal_fraction) =
+                batch_diagnostics(online, target, &batch, config.gamma);
+            profile_stats.diagnostics += diagnostics_start.elapsed();
+            metrics.diagnostics = StepDiagnostics {
+                mean_predicted_q,
+                mean_target_q,
+                mean_abs_td_error,
+                terminal_fraction,
+            };
+        }
+        let train_start = Instant::now();
+        let loss = optimization_runtime.train_batch(
+            online,
+            target,
+            &batch,
+            config.gamma,
+            config.learning_rate,
+            config.huber_delta,
+            config.gradient_clip_norm,
+        );
+        profile_stats.train_batch += train_start.elapsed();
+        profile_stats.optimization += optimize_start.elapsed();
+        profile_stats.train_updates += 1;
+        metrics.losses.push(loss);
+    }
+
+    if replay.len() >= config.warmup_steps && *total_steps % config.target_sync_interval == 0 {
+        let sync_start = Instant::now();
+        *target = online.clone();
+        let sync_elapsed = sync_start.elapsed();
+        profile_stats.target_sync += sync_elapsed;
+        profile_stats.optimization += sync_elapsed;
+    }
 }
 
 pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSummary {
@@ -918,6 +1393,7 @@ pub fn evaluate_saved_model(model: &SavedModel, seeds: &[u64]) -> EvaluationSumm
         &EvaluationRuntime::Sequential,
         model_type,
         MapDesign::Open,
+        ExecutionMode::RealGame,
     )
     .summary
 }
@@ -1058,6 +1534,40 @@ fn benchmark_evaluation(
     start.elapsed()
 }
 
+fn synthetic_total_steps(config: &GameConfig, survival_time: f32, action_repeat: usize) -> usize {
+    let step_duration = (config.fixed_timestep * action_repeat.max(1) as f32).max(f32::EPSILON);
+    (survival_time.max(step_duration) / step_duration).ceil() as usize
+}
+
+fn synthetic_observation(
+    seed: u64,
+    step_index: usize,
+    action: Action,
+    input_size: usize,
+) -> Vec<f32> {
+    let mut observation = vec![0.0; input_size];
+    let time = step_index as f32 * 0.017 + seed as f32 * 0.000_013;
+    let (dir_x, dir_y) = action.vector();
+    let velocity = rust_evades::game::Vec2 { x: dir_x, y: dir_y }.normalized_or_zero();
+
+    for (index, value) in observation.iter_mut().enumerate() {
+        let phase = time + index as f32 * 0.043;
+        let signal = if index % 2 == 0 {
+            phase.sin()
+        } else {
+            phase.cos()
+        };
+        *value = signal.clamp(-1.0, 1.0);
+    }
+
+    if input_size >= 2 {
+        observation[input_size - 2] = velocity.x;
+        observation[input_size - 1] = velocity.y;
+    }
+
+    observation
+}
+
 fn epsilon_for_step(config: &TrainingConfig, step: usize) -> f32 {
     let progress = (step as f32 / config.epsilon_decay_steps.max(1) as f32).clamp(0.0, 1.0);
     config.epsilon_start + (config.epsilon_end - config.epsilon_start) * progress
@@ -1131,9 +1641,16 @@ fn evaluate_network_with_results(
     runtime: &EvaluationRuntime,
     model_type: ModelType,
     map_design: MapDesign,
+    execution_mode: ExecutionMode,
 ) -> EvaluationOutcome {
-    let seed_results =
-        runtime.evaluate_batch(network, seeds, action_repeat, model_type, map_design);
+    let seed_results = runtime.evaluate_batch(
+        network,
+        seeds,
+        action_repeat,
+        model_type,
+        map_design,
+        execution_mode,
+    );
     let summary = aggregate_seed_results(&seed_results);
     EvaluationOutcome {
         summary,
@@ -1204,10 +1721,20 @@ fn evaluate_seed_batch_sequential(
     action_repeat: usize,
     model_type: ModelType,
     map_design: MapDesign,
+    execution_mode: ExecutionMode,
 ) -> Vec<SeedEpisodeSummary> {
     seeds
         .iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type, map_design))
+        .map(|&seed| {
+            evaluate_seed(
+                network,
+                seed,
+                action_repeat,
+                model_type,
+                map_design,
+                execution_mode,
+            )
+        })
         .collect()
 }
 
@@ -1217,10 +1744,20 @@ fn evaluate_seed_batch_parallel(
     action_repeat: usize,
     model_type: ModelType,
     map_design: MapDesign,
+    execution_mode: ExecutionMode,
 ) -> Vec<SeedEpisodeSummary> {
     seeds
         .par_iter()
-        .map(|&seed| evaluate_seed(network, seed, action_repeat, model_type, map_design))
+        .map(|&seed| {
+            evaluate_seed(
+                network,
+                seed,
+                action_repeat,
+                model_type,
+                map_design,
+                execution_mode,
+            )
+        })
         .collect()
 }
 
@@ -1230,30 +1767,59 @@ fn evaluate_seed(
     action_repeat: usize,
     model_type: ModelType,
     map_design: MapDesign,
+    execution_mode: ExecutionMode,
 ) -> SeedEpisodeSummary {
-    let mut env = GameState::new(env_config_for_training(map_design), Some(seed));
-    let mut observation = ObsBuilderState::new(model_type);
-    observation.reset(&env);
-    let mut episode_return = 0.0;
+    match execution_mode {
+        ExecutionMode::RealGame => {
+            let mut env = GameState::new(env_config_for_training(map_design), Some(seed));
+            let mut observation = ObsBuilderState::new(model_type);
+            observation.reset(&env);
+            let mut episode_return = 0.0;
 
-    while !env.done {
-        let state = observation.build_vec(&env);
-        let action = Action::ALL[greedy_action(network, &state)];
-        for _ in 0..action_repeat {
-            if env.done {
-                break;
+            while !env.done {
+                let state = observation.build_vec(&env);
+                let action = Action::ALL[greedy_action(network, &state)];
+                for _ in 0..action_repeat {
+                    if env.done {
+                        break;
+                    }
+                    let result = env.step_fixed(action);
+                    episode_return += result.reward;
+                }
             }
-            let result = env.step_fixed(action);
-            episode_return += result.reward;
-        }
-    }
 
-    let report = env.episode_report();
-    SeedEpisodeSummary {
-        total_return: episode_return,
-        survival_time: report.elapsed_time,
-        evades: report.enemies_evaded as f32,
-        timed_out: report.survived_full_episode,
+            let report = env.episode_report();
+            SeedEpisodeSummary {
+                total_return: episode_return,
+                survival_time: report.elapsed_time,
+                evades: report.enemies_evaded as f32,
+                timed_out: report.survived_full_episode,
+            }
+        }
+        ExecutionMode::SimulatedSurvival { survival_time } => {
+            let config = env_config_for_training(map_design);
+            let mut episode = SyntheticEpisode::new(
+                config.clone(),
+                seed,
+                model_type,
+                survival_time,
+                action_repeat,
+            );
+            loop {
+                let state = episode.current_state().to_vec();
+                let action = Action::ALL[greedy_action(network, &state)];
+                let step = episode.step(seed, action, action_repeat, model_type.input_size());
+                if step.done {
+                    let clamped_survival = survival_time.min(config.max_episode_time);
+                    return SeedEpisodeSummary {
+                        total_return: episode.total_return,
+                        survival_time: clamped_survival,
+                        evades: 0.0,
+                        timed_out: true,
+                    };
+                }
+            }
+        }
     }
 }
 

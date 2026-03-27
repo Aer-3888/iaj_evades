@@ -118,7 +118,19 @@ impl Network {
         let network = &*self;
         let mut gradients = batch
             .par_chunks(chunk_size.max(1))
-            .map(|chunk| network.accumulate_batch(target_network, chunk, gamma, huber_delta))
+            .fold(
+                || BatchGradients::zero_for(&network.layers),
+                |mut gradients, chunk| {
+                    network.accumulate_batch_into(
+                        target_network,
+                        chunk,
+                        gamma,
+                        huber_delta,
+                        &mut gradients,
+                    );
+                    gradients
+                },
+            )
             .reduce(
                 || BatchGradients::zero_for(&network.layers),
                 |mut left, right| {
@@ -169,6 +181,18 @@ impl Network {
         huber_delta: f32,
     ) -> BatchGradients {
         let mut gradients = BatchGradients::zero_for(&self.layers);
+        self.accumulate_batch_into(target_network, batch, gamma, huber_delta, &mut gradients);
+        gradients
+    }
+
+    fn accumulate_batch_into(
+        &self,
+        target_network: &Network,
+        batch: &[super::trainer::Transition],
+        gamma: f32,
+        huber_delta: f32,
+        gradients: &mut BatchGradients,
+    ) {
         for transition in batch {
             gradients.total_loss += self.accumulate_transition(
                 target_network,
@@ -179,7 +203,6 @@ impl Network {
                 &mut gradients.bias_grads,
             );
         }
-        gradients
     }
 
     fn accumulate_transition(
@@ -192,15 +215,12 @@ impl Network {
         bias_grads: &mut [Vec<f32>],
     ) -> f32 {
         let cache = self.forward(&transition.state);
-        let q_values = cache.activations.last().cloned().unwrap_or_default();
-        let next_q_values = if transition.done {
-            vec![0.0; q_values.len()]
+        let q_values = cache.activations.last().map(Vec::as_slice).unwrap_or(&[]);
+        let next_best = if transition.done {
+            0.0
         } else {
-            target_network.predict(&transition.next_state)
+            target_network.max_predict(&transition.next_state)
         };
-        let next_best = next_q_values
-            .into_iter()
-            .fold(f32::NEG_INFINITY, f32::max);
         let target = transition.reward
             + if transition.done {
                 0.0
@@ -212,11 +232,10 @@ impl Network {
 
         let (loss, grad_wrt_prediction) = huber(diff, huber_delta);
 
-        let mut deltas = vec![vec![0.0; q_values.len()]];
-        deltas[0][transition.action] = grad_wrt_prediction;
+        let mut delta = vec![0.0; q_values.len()];
+        delta[transition.action] = grad_wrt_prediction;
 
         for layer_index in (0..self.layers.len()).rev() {
-            let delta = deltas.pop().unwrap();
             let activation_input = &cache.activations[layer_index];
             let layer = &self.layers[layer_index];
 
@@ -239,7 +258,7 @@ impl Network {
                     let z = cache.pre_activations[layer_index - 1][input];
                     previous_delta[input] = if z > 0.0 { sum } else { 0.0 };
                 }
-                deltas.push(previous_delta);
+                delta = previous_delta;
             }
         }
 
@@ -252,7 +271,7 @@ impl Network {
         activations.push(input.to_vec());
 
         for (index, layer) in self.layers.iter().enumerate() {
-            let previous = activations.last().cloned().unwrap_or_default();
+            let previous = activations.last().map(Vec::as_slice).unwrap_or(&[]);
             let mut z = vec![0.0; layer.output_size];
             let mut a = vec![0.0; layer.output_size];
             for out in 0..layer.output_size {
@@ -276,6 +295,31 @@ impl Network {
             activations,
             pre_activations,
         }
+    }
+
+    fn max_predict(&self, input: &[f32]) -> f32 {
+        let mut current = input.to_vec();
+        let mut next = Vec::new();
+
+        for (index, layer) in self.layers.iter().enumerate() {
+            next.clear();
+            next.resize(layer.output_size, 0.0);
+            for out in 0..layer.output_size {
+                let row = out * layer.input_size;
+                let mut sum = layer.biases[out];
+                for input_index in 0..layer.input_size {
+                    sum += layer.weights[row + input_index] * current[input_index];
+                }
+                next[out] = if index + 1 == self.layers.len() {
+                    sum
+                } else {
+                    sum.max(0.0)
+                };
+            }
+            std::mem::swap(&mut current, &mut next);
+        }
+
+        current.into_iter().fold(f32::NEG_INFINITY, f32::max)
     }
 }
 
@@ -334,6 +378,23 @@ mod tests {
         let network = Network::new(&[INPUT_SIZE, 32, 9], &mut rng);
         let output = network.predict(&vec![0.0; INPUT_SIZE]);
         assert_eq!(output.len(), 9);
+    }
+
+    #[test]
+    fn max_predict_matches_predict_output_max() {
+        let mut rng = ChaCha8Rng::seed_from_u64(11);
+        let network = Network::new(&[INPUT_SIZE, 32, 16, 9], &mut rng);
+        let input = (0..INPUT_SIZE)
+            .map(|index| ((index as f32 * 0.17).sin() * 0.5) + 0.1)
+            .collect::<Vec<_>>();
+
+        let predicted_max = network
+            .predict(&input)
+            .into_iter()
+            .fold(f32::NEG_INFINITY, f32::max);
+        let direct_max = network.max_predict(&input);
+
+        assert!((predicted_max - direct_max).abs() < 1.0e-5);
     }
 
     #[test]

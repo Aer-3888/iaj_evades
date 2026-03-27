@@ -50,6 +50,20 @@ Evaluation now prints average and worst-seed survival/return metrics.
 cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- evaluate --model training_runs/dqn_default/final_model.json
 ```
 
+## Benchmark DQN2 Arena Training
+
+Full benchmark:
+
+```bash
+cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- benchmark --mode full-training
+```
+
+Simulated 40-second survival benchmark:
+
+```bash
+cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- benchmark --mode simulated-survival
+```
+
 ## Run Web Dashboard (Live Visualizer & Training Control)
 
 The dashboard allows you to change game settings, start/stop DQN training sessions, and view the game in real-time.
