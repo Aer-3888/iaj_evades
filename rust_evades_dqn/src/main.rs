@@ -2,6 +2,7 @@ use std::{fs, path::PathBuf};
 
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
+use rust_evades::config::MapDesign;
 
 use rust_evades_dqn::{
     model::{ModelType, SavedModel},
@@ -27,6 +28,23 @@ impl From<CliSeedFocusMode> for SeedFocusMode {
 enum CliModelType {
     Dqn,
     Dqn2,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliMapDesign {
+    Open,
+    Closed,
+    Arena,
+}
+
+impl From<CliMapDesign> for MapDesign {
+    fn from(value: CliMapDesign) -> Self {
+        match value {
+            CliMapDesign::Open => MapDesign::Open,
+            CliMapDesign::Closed => MapDesign::Closed,
+            CliMapDesign::Arena => MapDesign::Arena,
+        }
+    }
 }
 
 impl From<CliModelType> for ModelType {
@@ -81,6 +99,9 @@ enum Command {
 
         #[arg(long, value_enum, default_value_t = CliModelType::Dqn)]
         model_type: CliModelType,
+
+        #[arg(long, value_enum, default_value_t = CliMapDesign::Open)]
+        map_design: CliMapDesign,
     },
     Evaluate {
         #[arg(long)]
@@ -110,6 +131,7 @@ fn main() -> anyhow::Result<()> {
             checkpoint_every,
             seed_focus_mode,
             model_type,
+            map_design,
         } => {
             let config = TrainingConfig {
                 model_type: model_type.into(),
@@ -120,6 +142,7 @@ fn main() -> anyhow::Result<()> {
                 fixed_training_seeds: default_training_seeds(seed_start, seed_count),
                 random_seed_count_per_cycle: random_seed_count,
                 action_repeat,
+                map_design: map_design.into(),
                 ..TrainingConfig::default()
             };
             let resume_model = match resume_model {

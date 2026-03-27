@@ -108,13 +108,14 @@ impl Player {
         self.body.pos.y += self.body.vel.y * dt;
 
         if config.map_design == MapDesign::Closed {
-            self.body.pos.x = self.body.pos.x.clamp(
-                self.body.radius,
-                config.world_width - self.body.radius
-            );
+            self.body.pos.x = self
+                .body
+                .pos
+                .x
+                .clamp(self.body.radius, config.world_width - self.body.radius);
             self.body.pos.y = self.body.pos.y.clamp(
                 config.corridor_top + self.body.radius,
-                config.corridor_bottom - self.body.radius
+                config.corridor_bottom - self.body.radius,
             );
         }
     }
@@ -130,26 +131,30 @@ impl Enemy {
     fn update(&mut self, dt: f32, config: &GameConfig) {
         self.body.pos.x += self.body.vel.x * dt;
         self.body.pos.y += self.body.vel.y * dt;
-        
-        if config.map_design == MapDesign::Open {
-            self.remaining_life -= dt;
-        } else {
-            // Bounce logic for Closed map (from d138710)
-            if self.body.pos.x - self.body.radius <= 0.0 {
-                self.body.pos.x = self.body.radius;
-                self.body.vel.x *= -1.0;
-            } else if self.body.pos.x + self.body.radius >= config.world_width {
-                self.body.pos.x = config.world_width - self.body.radius;
-                self.body.vel.x *= -1.0;
-            }
 
-            if self.body.pos.y - self.body.radius <= config.corridor_top {
-                self.body.pos.y = config.corridor_top + self.body.radius;
-                self.body.vel.y *= -1.0;
-            } else if self.body.pos.y + self.body.radius >= config.corridor_bottom {
-                self.body.pos.y = config.corridor_bottom - self.body.radius;
-                self.body.vel.y *= -1.0;
+        match config.map_design {
+            MapDesign::Open => {
+                self.remaining_life -= dt;
             }
+            MapDesign::Closed => {
+                // Bounce logic for Closed map (from d138710)
+                if self.body.pos.x - self.body.radius <= 0.0 {
+                    self.body.pos.x = self.body.radius;
+                    self.body.vel.x *= -1.0;
+                } else if self.body.pos.x + self.body.radius >= config.world_width {
+                    self.body.pos.x = config.world_width - self.body.radius;
+                    self.body.vel.x *= -1.0;
+                }
+
+                if self.body.pos.y - self.body.radius <= config.corridor_top {
+                    self.body.pos.y = config.corridor_top + self.body.radius;
+                    self.body.vel.y *= -1.0;
+                } else if self.body.pos.y + self.body.radius >= config.corridor_bottom {
+                    self.body.pos.y = config.corridor_bottom - self.body.radius;
+                    self.body.vel.y *= -1.0;
+                }
+            }
+            MapDesign::Arena => {}
         }
     }
 }
@@ -222,7 +227,7 @@ impl GameState {
     pub fn new(config: GameConfig, seed: Option<u64>) -> Self {
         let base_seed = seed.unwrap_or(config.default_seed);
         let rng = ChaCha8Rng::seed_from_u64(base_seed);
-        
+
         let mut state = Self {
             config,
             base_seed,
@@ -264,30 +269,43 @@ impl GameState {
         self.rng = ChaCha8Rng::seed_from_u64(actual_seed);
         self.current_level = 0;
         self.map = Vec::new();
-        
-        if self.config.map_design == MapDesign::Open {
-            self.player = Player {
-                body: CircleBody {
-                    pos: Vec2::default(),
-                    vel: Vec2::default(),
-                    radius: self.config.player_radius,
-                },
-            };
-            self.enemies.clear();
-        } else {
-            // Closed map reset (from d138710)
-            let start_y = self.config.corridor_top + self.config.corridor_height() * 0.5;
-            self.player = Player {
-                body: CircleBody {
-                    pos: Vec2 {
-                        x: self.config.start_margin,
-                        y: start_y,
+
+        match self.config.map_design {
+            MapDesign::Open => {
+                self.player = Player {
+                    body: CircleBody {
+                        pos: Vec2::default(),
+                        vel: Vec2::default(),
+                        radius: self.config.player_radius,
                     },
-                    vel: Vec2::default(),
-                    radius: self.config.player_radius,
-                },
-            };
-            self.enemies = self.spawn_initial_enemies_closed();
+                };
+                self.enemies.clear();
+            }
+            MapDesign::Closed => {
+                // Closed map reset (from d138710)
+                let start_y = self.config.corridor_top + self.config.corridor_height() * 0.5;
+                self.player = Player {
+                    body: CircleBody {
+                        pos: Vec2 {
+                            x: self.config.start_margin,
+                            y: start_y,
+                        },
+                        vel: Vec2::default(),
+                        radius: self.config.player_radius,
+                    },
+                };
+                self.enemies = self.spawn_initial_enemies_closed();
+            }
+            MapDesign::Arena => {
+                self.player = Player {
+                    body: CircleBody {
+                        pos: Vec2::default(),
+                        vel: Vec2::default(),
+                        radius: self.config.player_radius,
+                    },
+                };
+                self.enemies = self.spawn_initial_enemies_arena();
+            }
         }
 
         self.enemies_evaded = 0;
@@ -315,7 +333,7 @@ impl GameState {
 
         self.player
             .apply_action(action, self.config.player_speed, delta, &self.config);
-        
+
         self.elapsed_time += delta;
         self.best_x = self.best_x.max(self.player.body.pos.x);
 
@@ -325,10 +343,12 @@ impl GameState {
 
         if self.config.map_design == MapDesign::Open {
             self.spawn_enemies_open(delta);
+        } else if self.config.map_design == MapDesign::Arena {
+            self.spawn_enemies_arena(delta);
         }
 
         let dx = self.player.body.pos.x - prev_x;
-        let mut reward = if self.config.map_design == MapDesign::Open {
+        let mut reward = if matches!(self.config.map_design, MapDesign::Open | MapDesign::Arena) {
             self.config.survival_reward_per_second * delta
                 + dx.max(0.0) * self.config.rightward_reward_per_unit
         } else {
@@ -340,12 +360,14 @@ impl GameState {
             self.done = true;
             self.done_reason = DoneReason::Collision;
             self.total_deaths += 1;
-            reward += if self.config.map_design == MapDesign::Open {
+            reward += if matches!(self.config.map_design, MapDesign::Open | MapDesign::Arena) {
                 self.config.collision_penalty
             } else {
                 -150.0 // Penalty from d138710
             };
-        } else if self.config.map_design == MapDesign::Closed && self.player.body.pos.x + self.player.body.radius >= self.config.goal_x() {
+        } else if self.config.map_design == MapDesign::Closed
+            && self.player.body.pos.x + self.player.body.radius >= self.config.goal_x()
+        {
             self.done = true;
             self.done_reason = DoneReason::Goal;
             self.total_wins += 1;
@@ -355,12 +377,16 @@ impl GameState {
                 let evaded = self.collect_expired_enemies();
                 self.enemies_evaded += evaded;
                 reward += evaded as f32 * self.config.enemy_evade_reward;
+            } else if self.config.map_design == MapDesign::Arena {
+                let evaded = self.collect_despawned_enemies_arena();
+                self.enemies_evaded += evaded;
+                reward += evaded as f32 * self.config.enemy_evade_reward;
             }
 
             if self.elapsed_time >= self.config.max_episode_time {
                 self.done = true;
                 self.done_reason = DoneReason::Timeout;
-                if self.config.map_design == MapDesign::Open {
+                if matches!(self.config.map_design, MapDesign::Open | MapDesign::Arena) {
                     self.total_timeouts += 1;
                     reward += self.config.timeout_bonus;
                 } else {
@@ -391,11 +417,12 @@ impl GameState {
     }
 
     pub fn fitness(&self) -> f32 {
-        if self.config.map_design == MapDesign::Open {
+        if matches!(self.config.map_design, MapDesign::Open | MapDesign::Arena) {
             self.episode_return + self.player.body.pos.x.max(0.0) * RIGHTWARD_FITNESS_BONUS_PER_UNIT
         } else {
             // Closed map fitness (from d138710)
-            let mut fitness = (self.best_x - self.config.start_margin).max(0.0) - self.elapsed_time * 2.0;
+            let mut fitness =
+                (self.best_x - self.config.start_margin).max(0.0) - self.elapsed_time * 2.0;
             match self.done_reason {
                 DoneReason::Goal => fitness += 2500.0,
                 DoneReason::Collision => fitness -= 400.0,
@@ -412,7 +439,8 @@ impl GameState {
             enemies_evaded: self.enemies_evaded,
             total_reward: self.episode_return,
             done_reason: self.done_reason,
-            survived_full_episode: self.done_reason == DoneReason::Timeout || self.done_reason == DoneReason::Goal,
+            survived_full_episode: self.done_reason == DoneReason::Timeout
+                || self.done_reason == DoneReason::Goal,
         }
     }
 
@@ -449,25 +477,143 @@ impl GameState {
         }
     }
 
+    fn spawn_initial_enemies_arena(&mut self) -> Vec<Enemy> {
+        let target_count = self.target_active_enemy_count_arena();
+        let mut enemies = Vec::with_capacity(target_count);
+        for _ in 0..target_count {
+            if let Some(enemy) = self.try_spawn_enemy_arena_within_view(&enemies) {
+                enemies.push(enemy);
+            }
+        }
+        enemies
+    }
+
+    fn spawn_enemies_arena(&mut self, _delta: f32) {
+        let target_count = self.target_active_enemy_count_arena();
+        let mut attempts_left = target_count.saturating_mul(10).max(32);
+
+        while self.arena_visible_enemy_count() < target_count && attempts_left > 0 {
+            attempts_left -= 1;
+            let existing = self.enemies.clone();
+            if let Some(enemy) = self.try_spawn_enemy_arena_within_view(&existing) {
+                self.enemies.push(enemy);
+            }
+        }
+    }
+
+    fn target_active_enemy_count_arena(&self) -> usize {
+        let corridor_enemy_count =
+            self.config.enemy_count + self.config.wall_enemy_pairs_per_wall * 4;
+        let corridor_area = (self.config.world_width * self.config.corridor_height()).max(1.0);
+        let screen_area =
+            (self.config.screen_width as f32 * self.config.screen_height as f32).max(1.0);
+        ((corridor_enemy_count as f32 / corridor_area) * screen_area)
+            .round()
+            .max(1.0) as usize
+    }
+
+    fn arena_visible_enemy_count(&self) -> usize {
+        let half_w = self.config.screen_width as f32 * 0.5;
+        let half_h = self.config.screen_height as f32 * 0.5;
+        let player_pos = self.player.body.pos;
+        self.enemies
+            .iter()
+            .filter(|enemy| Self::is_enemy_inside_arena_view(enemy, player_pos, half_w, half_h))
+            .count()
+    }
+
+    fn is_enemy_inside_arena_view(
+        enemy: &Enemy,
+        player_pos: Vec2,
+        half_w: f32,
+        half_h: f32,
+    ) -> bool {
+        let dx = (enemy.body.pos.x - player_pos.x).abs();
+        let dy = (enemy.body.pos.y - player_pos.y).abs();
+        dx <= half_w && dy <= half_h
+    }
+
+    fn try_spawn_enemy_arena_within_view(&mut self, existing: &[Enemy]) -> Option<Enemy> {
+        let half_w = self.config.screen_width as f32 * 0.5;
+        let half_h = self.config.screen_height as f32 * 0.5;
+        let player_spawn_clearance = self.config.player_radius * 2.0;
+
+        for _ in 0..300 {
+            let x = self
+                .rng
+                .gen_range(self.player.body.pos.x - half_w..=self.player.body.pos.x + half_w);
+            let y = self
+                .rng
+                .gen_range(self.player.body.pos.y - half_h..=self.player.body.pos.y + half_h);
+
+            let radius = self
+                .rng
+                .gen_range(self.config.enemy_radius_min..=self.config.enemy_radius_max);
+            let speed = self
+                .rng
+                .gen_range(self.config.enemy_speed_min..=self.config.enemy_speed_max);
+            let angle = self.rng.gen_range(0.0..std::f32::consts::TAU);
+
+            let min_separation = radius + player_spawn_clearance;
+            let min_separation_sq = min_separation * min_separation;
+            let dx = x - self.player.body.pos.x;
+            let dy = y - self.player.body.pos.y;
+            if dx * dx + dy * dy < min_separation_sq {
+                continue;
+            }
+
+            let candidate = Enemy {
+                body: CircleBody {
+                    pos: Vec2 { x, y },
+                    vel: Vec2 {
+                        x: angle.cos() * speed,
+                        y: angle.sin() * speed,
+                    },
+                    radius,
+                },
+                remaining_life: f32::INFINITY,
+            };
+
+            let clear_of_existing = existing.iter().all(|other| {
+                let dx = candidate.body.pos.x - other.body.pos.x;
+                let dy = candidate.body.pos.y - other.body.pos.y;
+                let min_gap = candidate.body.radius + other.body.radius + 14.0;
+                dx * dx + dy * dy > min_gap * min_gap
+            });
+
+            if clear_of_existing {
+                return Some(candidate);
+            }
+        }
+
+        None
+    }
+
     fn spawn_initial_enemies_closed(&mut self) -> Vec<Enemy> {
         let wall_enemy_count = self.config.wall_enemy_pairs_per_wall * 4;
         let mut enemies = Vec::with_capacity(self.config.enemy_count + wall_enemy_count);
         enemies.extend(self.spawn_wall_enemies_closed());
-        
+
         let min_x = 0.0;
         let end_safe_x = self.config.goal_x() - 180.0;
         let player_spawn_clearance = self.config.player_radius * 2.0;
 
         for _ in 0..self.config.enemy_count {
-            let radius = self.rng.gen_range(self.config.enemy_radius_min..=self.config.enemy_radius_max);
+            let radius = self
+                .rng
+                .gen_range(self.config.enemy_radius_min..=self.config.enemy_radius_max);
             let mut spawned = None;
 
             for _ in 0..500 {
                 let x = self.rng.gen_range(min_x + radius..end_safe_x);
-                let y = self.rng.gen_range(self.config.corridor_top + radius..self.config.corridor_bottom - radius);
-                let speed = self.rng.gen_range(self.config.enemy_speed_min..=self.config.enemy_speed_max);
+                let y = self.rng.gen_range(
+                    self.config.corridor_top + radius..self.config.corridor_bottom - radius,
+                );
+                let speed = self
+                    .rng
+                    .gen_range(self.config.enemy_speed_min..=self.config.enemy_speed_max);
                 let angle = self.rng.gen_range(0.0..std::f32::consts::TAU);
-                
+
                 let candidate = Enemy {
                     body: CircleBody {
                         pos: Vec2 { x, y },
@@ -481,8 +627,9 @@ impl GameState {
                 };
 
                 let far_enough_from_player = self.player.body.distance_squared_to(&candidate.body)
-                    > (candidate.body.radius + player_spawn_clearance) * (candidate.body.radius + player_spawn_clearance);
-                
+                    > (candidate.body.radius + player_spawn_clearance)
+                        * (candidate.body.radius + player_spawn_clearance);
+
                 let clear_of_other_enemies = enemies.iter().all(|other| {
                     let dx = candidate.body.pos.x - other.body.pos.x;
                     let dy = candidate.body.pos.y - other.body.pos.y;
@@ -507,7 +654,8 @@ impl GameState {
         let mut enemies = Vec::with_capacity(self.config.wall_enemy_pairs_per_wall * 4);
         let lane_start = self.config.start_margin + 260.0;
         let lane_end = self.config.goal_x() - 220.0;
-        let spacing = (lane_end - lane_start) / (self.config.wall_enemy_pairs_per_wall.max(1) as f32 + 1.0);
+        let spacing =
+            (lane_end - lane_start) / (self.config.wall_enemy_pairs_per_wall.max(1) as f32 + 1.0);
         let top_y = self.config.corridor_top + self.config.wall_enemy_radius;
         let bottom_y = self.config.corridor_bottom - self.config.wall_enemy_radius;
 
@@ -518,16 +666,28 @@ impl GameState {
             // Top pair
             enemies.push(Enemy {
                 body: CircleBody {
-                    pos: Vec2 { x: anchor_x - offset, y: top_y },
-                    vel: Vec2 { x: self.config.wall_enemy_speed, y: 0.0 },
+                    pos: Vec2 {
+                        x: anchor_x - offset,
+                        y: top_y,
+                    },
+                    vel: Vec2 {
+                        x: self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
                     radius: self.config.wall_enemy_radius,
                 },
                 remaining_life: f32::INFINITY,
             });
             enemies.push(Enemy {
                 body: CircleBody {
-                    pos: Vec2 { x: anchor_x + offset, y: top_y },
-                    vel: Vec2 { x: -self.config.wall_enemy_speed, y: 0.0 },
+                    pos: Vec2 {
+                        x: anchor_x + offset,
+                        y: top_y,
+                    },
+                    vel: Vec2 {
+                        x: -self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
                     radius: self.config.wall_enemy_radius,
                 },
                 remaining_life: f32::INFINITY,
@@ -536,16 +696,28 @@ impl GameState {
             // Bottom pair
             enemies.push(Enemy {
                 body: CircleBody {
-                    pos: Vec2 { x: anchor_x - offset, y: bottom_y },
-                    vel: Vec2 { x: self.config.wall_enemy_speed, y: 0.0 },
+                    pos: Vec2 {
+                        x: anchor_x - offset,
+                        y: bottom_y,
+                    },
+                    vel: Vec2 {
+                        x: self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
                     radius: self.config.wall_enemy_radius,
                 },
                 remaining_life: f32::INFINITY,
             });
             enemies.push(Enemy {
                 body: CircleBody {
-                    pos: Vec2 { x: anchor_x + offset, y: bottom_y },
-                    vel: Vec2 { x: -self.config.wall_enemy_speed, y: 0.0 },
+                    pos: Vec2 {
+                        x: anchor_x + offset,
+                        y: bottom_y,
+                    },
+                    vel: Vec2 {
+                        x: -self.config.wall_enemy_speed,
+                        y: 0.0,
+                    },
                     radius: self.config.wall_enemy_radius,
                 },
                 remaining_life: f32::INFINITY,
@@ -628,6 +800,23 @@ impl GameState {
         evaded
     }
 
+    fn collect_despawned_enemies_arena(&mut self) -> u32 {
+        let mut evaded = 0;
+        let half_w = self.config.screen_width as f32 * 0.5;
+        let half_h = self.config.screen_height as f32 * 0.5;
+        let player_pos = self.player.body.pos;
+
+        self.enemies.retain(|enemy| {
+            let keep = Self::is_enemy_inside_arena_view(enemy, player_pos, half_w, half_h);
+            if !keep {
+                evaded += 1;
+            }
+            keep
+        });
+
+        evaded
+    }
+
     fn collided(&self) -> bool {
         self.enemies.iter().any(|enemy| {
             let sum = self.player.body.radius + enemy.body.radius;
@@ -657,8 +846,13 @@ pub fn simulate_player_position(
     };
 
     if config.map_design == MapDesign::Closed {
-        pos.x = pos.x.clamp(player.body.radius, config.world_width - player.body.radius);
-        pos.y = pos.y.clamp(config.corridor_top + player.body.radius, config.corridor_bottom - player.body.radius);
+        pos.x = pos
+            .x
+            .clamp(player.body.radius, config.world_width - player.body.radius);
+        pos.y = pos.y.clamp(
+            config.corridor_top + player.body.radius,
+            config.corridor_bottom - player.body.radius,
+        );
     }
     pos
 }

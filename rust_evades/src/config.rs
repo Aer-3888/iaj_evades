@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum MapDesign {
     Open,
     Closed,
+    Arena,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

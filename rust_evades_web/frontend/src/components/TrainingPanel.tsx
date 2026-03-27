@@ -13,6 +13,7 @@ interface Props {
 
 interface TrainingConfig {
   model_type: 'dqn' | 'dqn2';
+  map_design: 'Open' | 'Closed' | 'Arena';
   episodes: number;
   trainer_seed: number;
   learning_rate: number;
@@ -37,6 +38,7 @@ interface TrainingConfig {
 
 const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
   model_type: 'dqn',
+  map_design: 'Open',
   episodes: 100000,
   trainer_seed: 7,
   learning_rate: 0.0003,
@@ -376,6 +378,7 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
              </div>
              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 font-mono mt-3">
                <div>Model: <span className="text-emerald-400">{activeConfig.config.model_type.toUpperCase()}</span></div>
+               <div>Map: <span className="text-emerald-400">{activeConfig.config.map_design}</span></div>
                <div>Episodes: <span className="text-emerald-400">{activeConfig.config.episodes}</span></div>
                <div>LR: <span className="text-emerald-400">{activeConfig.config.learning_rate}</span></div>
                <div>Trainer Seed: <span className="text-emerald-400">{activeConfig.config.trainer_seed}</span></div>
@@ -402,8 +405,8 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Core Parameters</h3>
                <div className="space-y-3">
                  {/* Model Type Selector */}
-                 <div className="space-y-1">
-                   <label className="text-xs font-medium text-slate-500">Model Type</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500">Model Type</label>
                    <div className="flex rounded overflow-hidden border border-slate-800">
                      <button
                        onClick={() => setConfig({...config, model_type: 'dqn'})}
@@ -423,15 +426,38 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                        Near + far raycast (146 inputs vs. 74). Longer to train.
                      </p>
                    )}
-                   {isCrossTypeResume && (
-                     <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                       <AlertTriangle size={10} /> Resume model is {(resumeModelType ?? '').toUpperCase()} — weights will be zero-padded.
-                     </p>
-                   )}
-                 </div>
-                 <SettingInput 
-                    label="Total Episodes" 
-                    value={config.episodes} 
+                    {isCrossTypeResume && (
+                      <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                        <AlertTriangle size={10} /> Resume model is {(resumeModelType ?? '').toUpperCase()} — weights will be zero-padded.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500">Training Map</label>
+                    <div className="flex rounded overflow-hidden border border-slate-800">
+                      <button
+                        onClick={() => setConfig({...config, map_design: 'Open'})}
+                        className={`flex-1 py-1.5 text-xs font-bold transition ${config.map_design === 'Open' ? 'bg-emerald-700 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                      >
+                        Open
+                      </button>
+                      <button
+                        onClick={() => setConfig({...config, map_design: 'Arena'})}
+                        className={`flex-1 py-1.5 text-xs font-bold transition ${config.map_design === 'Arena' ? 'bg-emerald-700 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                      >
+                        Arena
+                      </button>
+                      <button
+                        onClick={() => setConfig({...config, map_design: 'Closed'})}
+                        className={`flex-1 py-1.5 text-xs font-bold transition ${config.map_design === 'Closed' ? 'bg-emerald-700 text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                      >
+                        Closed
+                      </button>
+                    </div>
+                  </div>
+                  <SettingInput 
+                     label="Total Episodes" 
+                     value={config.episodes} 
                     onChange={v => setConfig({...config, episodes: v})} 
                     min={100} max={1000000} step={1000}
                   />

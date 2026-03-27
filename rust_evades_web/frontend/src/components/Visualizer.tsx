@@ -16,7 +16,7 @@ interface GameState {
     };
   }>;
   config: {
-    map_design: "Open" | "Closed";
+    map_design: "Open" | "Closed" | "Arena";
     screen_width: number;
     screen_height: number;
     background_color: { r: number; g: number; b: number };
@@ -158,7 +158,7 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
 
     // Camera
     let camX, camY;
-    if (config.map_design === 'Open') {
+    if (config.map_design !== 'Closed') {
       camX = state.player.body.pos.x - viewportWidth / 2;
       camY = state.player.body.pos.y - viewportHeight / 2;
     } else {
@@ -175,7 +175,7 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const drawWorld = () => {
-      if (config.map_design === 'Open') {
+      if (config.map_design !== 'Closed') {
         // Grid for Open Map
         ctx.strokeStyle = `rgb(${config.grid_color.r}, ${config.grid_color.g}, ${config.grid_color.b})`;
         ctx.lineWidth = 1;
@@ -422,6 +422,8 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
     ctx.font = 'bold 16px monospace';
     if (config.map_design === 'Open') {
       ctx.fillText('DESIGN: OPEN', 25, 40);
+    } else if (config.map_design === 'Arena') {
+      ctx.fillText('DESIGN: ARENA', 25, 40);
     } else {
       const progress = state.player.body.pos.x - config.start_margin;
       const total = config.world_width - config.goal_width - config.start_margin;
@@ -432,7 +434,7 @@ export default function Visualizer({ isRunning, isAiMode }: Props) {
     ctx.fillStyle = '#cbd5e1';
     ctx.fillText(`TIME: ${state.elapsed_time.toFixed(2)}s`, 25, 65);
     ctx.fillText(`EVADES: ${state.enemies_evaded}`, 25, 85);
-    ctx.fillText(`BEST: ${config.map_design === "Open" ? state.best_survival_ever.toFixed(1) + "s" : Math.floor(state.best_progress_ever)}`, 25, 105);
+    ctx.fillText(`BEST: ${config.map_design !== "Closed" ? state.best_survival_ever.toFixed(1) + "s" : Math.floor(state.best_progress_ever)}`, 25, 105);
     ctx.fillText(`DEATHS: ${state.total_deaths}`, 25, 125);
   };
 
