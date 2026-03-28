@@ -34,6 +34,7 @@ interface TrainingConfig {
   action_repeat: number;
   huber_delta: number;
   gradient_clip_norm: number;
+  reward_rightward_movement: boolean;
 }
 
 const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
@@ -59,6 +60,7 @@ const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
   action_repeat: 2,
   huber_delta: 10.0,
   gradient_clip_norm: 1280.0,
+  reward_rightward_movement: true,
 };
 
 interface ModelInfo {
@@ -390,6 +392,7 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                <div>Huber Delta: <span className="text-emerald-400">{activeConfig.config.huber_delta}</span></div>
                <div>Grad Clip: <span className="text-emerald-400">{activeConfig.config.gradient_clip_norm}</span></div>
                <div>Seed Focus: <span className="text-emerald-400">{activeConfig.config.seed_focus_mode}</span></div>
+               <div>Rightward Bonus: <span className="text-emerald-400">{activeConfig.config.reward_rightward_movement ? 'ON' : 'OFF'}</span></div>
                {activeConfig.resume_model_path && (
                  <div className="col-span-2 md:col-span-4 mt-1 border-t border-slate-800/50 pt-2">
                    Resume Model: <span className="text-blue-400">{activeConfig.resume_model_path.split('/').pop()}</span>
@@ -538,6 +541,27 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                     onChange={v => setConfig({...config, target_sync_interval: v})} 
                     min={100} max={10000} step={100}
                   />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500">Rightward Reward Bonus</label>
+                    <button
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          reward_rightward_movement: !config.reward_rightward_movement,
+                        })
+                      }
+                      className={`w-full px-3 py-2 rounded border text-xs font-bold transition ${
+                        config.reward_rightward_movement
+                          ? 'bg-emerald-900/40 border-emerald-700/60 text-emerald-300'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {config.reward_rightward_movement ? 'Enabled' : 'Disabled'}
+                    </button>
+                    <p className="text-[10px] text-slate-500">
+                      When disabled, rightward movement is not rewarded during training.
+                    </p>
+                  </div>
                </div>
             </div>
 
