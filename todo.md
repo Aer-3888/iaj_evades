@@ -1,24 +1,24 @@
-# TODO List
+# TODO
 
-## Améliorations IA
+## AI
 
-- [ ] Deuxième (voire troisième) raycasting plus profond (collide pas avec les premiers enemis)
+- [ ] Deeper second (or third) raycast pass that does not collide with the first set of enemies.
 
 ## UI
 
-- [x] Log les infos de chaque run
-- [x] Pouvoir choisir la seed du run
-- [x] Visualiser le raycasting
-- [x] Vision Only Mode (Fog of War)
-- [x] Page d'évaluation de l'ia
-- [x] Pouvoir resume un training avec un modèle
-- [x] Pouvoir écrire des valeurs au lieu des sliders
-- [x] Pouvoir changer la vitesse de jeu
-- [x] Side menu avec les settings pour plus vite
+- [x] Log the info of each run
+- [x] Choose the run seed
+- [x] Visualize the raycasting
+- [x] Vision-only mode (fog of war)
+- [x] Agent evaluation page
+- [x] Resume a training run from a saved model
+- [x] Type exact values instead of using sliders
+- [x] Change game speed
+- [x] Side menu with quick settings
 - [x] Flashlight mode
 - [x] Fullscreen game mode
 - [x] Seed history log
-- [ ] Seed finder tab pour trouver les seeds stylés
+- [ ] Seed finder tab to surface interesting seeds
 - [ ] Rolling average of performance by steps
-- [ ] Remove blue (2nd raycast pass) visualization if model type is DQN
-- [ ] Flash light mode should adapt to the model type: have bigger radius if type is DQN2
+- [ ] Hide the blue second-raycast-pass visualization when the model type is DQN
+- [ ] Adapt flashlight radius to the model type (larger radius for DQN2)

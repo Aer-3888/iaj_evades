@@ -1,83 +1,69 @@
 # IAJ Evades
 
-A Rust-based implementation of the Evades game engine with Deep Q-Learning (DQN) capabilities and a web-based management dashboard.
+A Rust reimplementation of the [Evades](https://evades.io) dodging game, with a Deep Q-Network agent trained from scratch and a web dashboard for live training control and visualization.
+
+The neural network and the DQN training loop are implemented by hand in Rust (no ML framework), parallelized with Rayon. The agent learns to survive in an arena of moving enemies using a raycast-based vision of its surroundings.
 
 ## Project Structure
 
-- **rust_evades**: Core game engine and standalone graphical player.
-- **rust_evades_dqn**: DQN implementation, training, and evaluation tools.
-- **rust_evades_web**: Web-based dashboard for real-time visualization, training control, and configuration.
+- **rust_evades**: core game engine, with a graphical window mode and a fast headless mode.
+- **rust_evades_dqn**: the DQN agent, training, evaluation, and benchmark tooling (CLI).
+- **rust_evades_web**: Axum web server plus a React/TypeScript dashboard for real-time training control and visualization over WebSockets.
+
+## Tech Stack
+
+- **Engine and agent**: Rust 2021, hand-written neural network, Rayon for parallel batch training, `minifb` for the graphical window.
+- **Dashboard**: Rust (Axum, Tokio) backend, React + TypeScript + Vite frontend, Tailwind CSS, Recharts, live updates over WebSockets.
 
 ## Prerequisites
 
-- **Rust**: [Install Rust](https://www.rust-lang.org/tools/install) (Edition 2021).
-- **Node.js**: [Install Node.js](https://nodejs.org/) (v18 or newer) for the frontend dashboard.
-- **C Dependencies**: `minifb` (the graphical crate) may require X11 development headers on Linux (`libx11-dev` on Debian/Ubuntu).
+- **Rust** (edition 2021): [install Rust](https://www.rust-lang.org/tools/install).
+- **Node.js** v18 or newer (only for the dashboard frontend): [install Node.js](https://nodejs.org/).
+- On Linux, the graphical crate `minifb` may need X11 headers (`libx11-dev` on Debian/Ubuntu).
 
-## Installation
+## Quick Start
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd iaj_evades
-   ```
-
-2. Build the web frontend:
-   ```bash
-   cd rust_evades_web/frontend
-   npm install
-   npm run build
-   cd ../..
-   ```
-
-## Usage
-
-### 1. Web Dashboard (Recommended)
-The web dashboard provides a unified interface to control training, adjust game physics, and view the simulation.
+Clone the repository:
 
 ```bash
-cd rust_evades_web
-cargo run --release
-```
-Once the server is running, open [http://localhost:8080](http://localhost:8080) in your browser.
-
-### 2. Standalone Simulation
-Run the simulation locally with a window using either manual or model-based control.
-
-**Manual Control:**
-```bash
-cargo run --release --manifest-path rust_evades/Cargo.toml -- --controller right
+git clone https://github.com/Aer-3888/iaj_evades.git
+cd iaj_evades
 ```
 
-**Model Control (using a specific JSON model):**
+### Watch the trained agent play
+
 ```bash
 cargo run --release --manifest-path rust_evades/Cargo.toml -- --controller model --model best_model.json
 ```
 
-### 3. CLI Training
-You can also run training sessions directly from the command line.
+### Train an agent
 
-**Start New Training:**
 ```bash
 cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- train --output-dir training_runs/my_run
 ```
 
-**Resume Training:**
+### Run the web dashboard
+
 ```bash
-cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- train \
-  --resume-model training_runs/my_run/final_model.json \
-  --output-dir training_runs/my_run_resumed
+# Build the frontend once (outputs to rust_evades_web/dist)
+cd rust_evades_web/frontend && npm install && npm run build
+
+# Start the server from the web crate
+cd .. && cargo run --release
 ```
 
-**Evaluate a Model:**
-```bash
-cargo run --release --manifest-path rust_evades_dqn/Cargo.toml -- evaluate --model best_model.json
-```
+Open [http://localhost:8080](http://localhost:8080) once you see `listening on 0.0.0.0:8080`.
+
+A full command reference (training options, evaluation, benchmarks, resuming) is in [COMMANDS.md](COMMANDS.md).
 
 ## Features
 
-- **Dual Map Designs**: Switch between **Open Map** (infinite space) and **Closed Map** (corridor with goal) in real-time.
-- **Real-time Monitoring**: Visualize agent behavior and training metrics (reward, loss, survival) via WebSockets.
-- **Dynamic Configuration**: Change game parameters like speed, radius, and spawn intervals without restarting.
-- **Model Management**: Select and load different brain checkpoints (.json) directly from the dashboard.
-- **Optimized Training**: Multi-threaded batch training with bad-seed focusing to improve agent robustness.
+- **Two agent variants**: a baseline `dqn` and a deeper `dqn2` raycast model, selectable at training time.
+- **From-scratch DQN**: replay buffer, target network, and Huber loss implemented in Rust, with multi-threaded batch training and bad-seed focusing to harden the agent against its weakest scenarios.
+- **Multiple maps**: open (infinite space), closed (corridor with a goal), and arena.
+- **Web dashboard**: start, stop, and resume training, tune game and training parameters live, switch maps, and watch the agent through a raycast visualizer, all updating in real time over WebSockets.
+- **Headless mode and benchmarks**: reproducible CLI training, evaluation, and timed benchmark runs with JSON reports.
+
+## Models
+
+`best_model.json` is a pre-trained checkpoint you can run directly. New runs write their checkpoints and `final_model.json` under the `--output-dir` you pass to `train`.

@@ -199,8 +199,8 @@ pub fn sample_rays(state: &GameState) -> [f32; RAY_COUNT] {
 /// Dual-pass raycasting.
 ///
 /// Returns `(near_rays, far_rays)` where:
-/// * `near_rays` — same as `sample_rays` (length `ray_length()`).
-/// * `far_rays`  — same 36 angles at **double** the length, but enemies whose
+/// * `near_rays`, same as `sample_rays` (length `ray_length()`).
+/// * `far_rays`, same 36 angles at **double** the length, but enemies whose
 ///   circle was already hit in the near pass are **excluded** (walls still
 ///   collide with both passes).
 pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT]) {
@@ -284,7 +284,7 @@ pub fn sample_rays_dual(state: &GameState) -> ([f32; RAY_COUNT], [f32; RAY_COUNT
     // during the loop above but we need to reset and recompute carefully so
     // that the flag means "this enemy was detected by at least one near ray".
     // The loop above already does this correctly (sets the flag whenever a
-    // hit is found, regardless of being the global minimum — that's fine for
+    // hit is found, regardless of being the global minimum, that's fine for
     // exclusion purposes).
 
     // ---- Far pass (skip near-hit enemies) ----

@@ -1,9 +1,17 @@
 # Commands
 
+Full command reference for the three crates. See [README.md](README.md) for an overview.
+
 ## Play Manually
 
 ```bash
 cargo run --release --manifest-path rust_evades/Cargo.toml -- --controller right
+```
+
+## Run Headless (no window, uncapped, prints stats)
+
+```bash
+cargo run --release --manifest-path rust_evades/Cargo.toml -- --headless --episodes 10 --controller model --model best_model.json
 ```
 
 ## Train DQN

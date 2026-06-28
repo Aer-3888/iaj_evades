@@ -204,7 +204,7 @@ export default function SettingsPanel() {
                 <div className="flex justify-between items-end">
                   <label className="text-sm font-medium text-slate-400">Spawn Interval (min/max)</label>
                   <span className="text-sm font-mono text-blue-400 bg-blue-900/20 px-2 py-1 rounded">
-                    {config.enemy_spawn_interval_min.toFixed(2)}s — {config.enemy_spawn_interval_max.toFixed(2)}s
+                    {config.enemy_spawn_interval_min.toFixed(2)}s to {config.enemy_spawn_interval_max.toFixed(2)}s
                   </span>
                 </div>
               </div>

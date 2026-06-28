@@ -431,7 +431,7 @@ export default function TrainingPanel({ history, isRunning, setIsRunning }: Prop
                    )}
                     {isCrossTypeResume && (
                       <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                        <AlertTriangle size={10} /> Resume model is {(resumeModelType ?? '').toUpperCase()} — weights will be zero-padded.
+                        <AlertTriangle size={10} /> Resume model is {(resumeModelType ?? '').toUpperCase()}. Weights will be zero-padded.
                       </p>
                     )}
                   </div>

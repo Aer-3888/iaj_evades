@@ -1,16 +1,12 @@
-__pycache__/
-*.py[cod]
-.cache/
-
+# Rust
 target/
+**/*.rs.bk
+
+# Training artifacts
 training_runs/
 checkpoints/
-.ipynb_checkpoints/
 
-# Node
+# Node / frontend
 node_modules/
 dist/
 .env
-
-# Rust
-**/*.rs.bk

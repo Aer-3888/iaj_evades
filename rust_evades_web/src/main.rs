@@ -513,17 +513,17 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             match rx_broadcast.recv().await {
                 Ok(msg) => {
                     if sender.send(Message::Text(msg)).await.is_err() {
-                        // Client disconnected — stop the sender task.
+                        // Client disconnected, stop the sender task.
                         break;
                     }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                     // We fell behind by `n` messages (channel full). Skip them and
-                    // keep running — no reason to kill the connection.
+                    // keep running, no reason to kill the connection.
                     tracing::warn!("WebSocket broadcast lagged, skipped {} messages", n);
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                    // Sender dropped — nothing left to receive.
+                    // Sender dropped, nothing left to receive.
                     break;
                 }
             }
